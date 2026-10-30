@@ -1,4 +1,3 @@
-js/Firebase/firebase-config.js
 js/TomatoValidator/roboflow-config.js
 js/DiseaseClassification/disease-classification-config.js
 server/.env

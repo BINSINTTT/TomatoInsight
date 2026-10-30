@@ -194,7 +194,8 @@ def static_files(path: str):
     if root_target.is_file():
         return send_from_directory(ROOT, path)
 
-    if (HTML_DIR / "index.html").is_file():
+    # Do not send the dashboard HTML for a missing script or stylesheet.
+    if "." not in Path(path).name and (HTML_DIR / "index.html").is_file():
         return send_from_directory(HTML_DIR, "index.html")
     return jsonify({"error": "not_found"}), 404
 
