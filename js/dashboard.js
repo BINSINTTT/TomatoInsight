@@ -1,0 +1,1148 @@
+(function () {
+  const MIN = 1;
+  const MAX = 10;
+  const STORAGE_KEY = "tomatoInsight.farmLayout";
+  const workspace = document.getElementById("farm-workspace");
+  const emptyState = document.getElementById("farm-empty-state");
+  const gridViewport = document.getElementById("farm-grid-viewport");
+  const gridHost = document.getElementById("farm-grid");
+  const layoutSummary = document.getElementById("farm-layout-summary");
+  const totalPlantsEl = document.getElementById("metric-total-plants");
+
+  const modal = document.getElementById("layout-modal");
+  const form = document.getElementById("layout-form");
+  const rowsInput = document.getElementById("input-rows");
+  const colsInput = document.getElementById("input-columns");
+  const previewGrid = document.getElementById("modal-preview-grid");
+  const previewCount = document.getElementById("modal-preview-count");
+  const tileDrawer = document.getElementById("tile-drawer");
+  const tilePlantNameInput = document.getElementById("tile-plant-name-input");
+  const tileDrawerTileRef = document.getElementById("tile-drawer-tile-ref");
+  const tileDrawerPosition = document.getElementById("tile-drawer-position");
+  if (!workspace || !modal) return;
+
+  let layout = loadLayout();
+  let tileDrawerCloseTimer = null;
+  let activeTileNum = null;
+  let activeTileImageDataUrl = null;
+  let pendingScanTile = null;
+  let suppressDraft = false;
+  const tileDrafts = new Map();
+  const tileNameDrafts = new Map();
+
+  const CLASSIFICATION_ROW_ORDER = ["healthy", "tlcv", "early_blight", "spotted_wilt"];
+
+  const POPOVER_BAR_LABELS = {
+    healthy: "Healthy",
+    tlcv: "TLCV",
+    early_blight: "Early Blight",
+    spotted_wilt: "Spotted Wilt",
+  };
+
+  const POPOVER_FILL_CLASS = {
+    healthy: "scan-result-row__fill--healthy",
+    tlcv: "scan-result-row__fill--tlcv",
+    early_blight: "scan-result-row__fill--blight",
+    spotted_wilt: "scan-result-row__fill--wilt",
+  };
+
+  const POPOVER_BADGE_CLASS = {
+    healthy: "farm-tile__popover-badge--healthy",
+    tlcv: "farm-tile__popover-badge--tlcv",
+    early_blight: "farm-tile__popover-badge--blight",
+    spotted_wilt: "farm-tile__popover-badge--wilt",
+  };
+
+  function findGridTile(tileNum) {
+    if (!gridHost) return null;
+    return gridHost.querySelector(`.farm-tile[data-tile="${tileNum}"]`);
+  }
+
+  function formatSavedTimestamp(iso) {
+    if (!iso) return "";
+    try {
+      return new Date(iso).toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    } catch {
+      return iso;
+    }
+  }
+
+  function getCurrentClassificationScores() {
+    const scores = {};
+    CLASSIFICATION_ROW_ORDER.forEach((key) => {
+      const val = tileDrawer?.querySelector(`.scan-result-row__value[data-class="${key}"]`);
+      scores[key] = Math.min(100, Math.max(0, Number.parseInt(val?.textContent, 10) || 0));
+    });
+    return scores;
+  }
+
+  function showTileSaveMessage(message) {
+    const statusEl = document.getElementById("tile-save-status");
+    if (!statusEl) return;
+    if (!message) {
+      statusEl.hidden = true;
+      statusEl.textContent = "";
+      return;
+    }
+    statusEl.textContent = message;
+    statusEl.hidden = false;
+  }
+
+  function updateTileSaveStatus(iso, weekNumber) {
+    const statusEl = document.getElementById("tile-save-status");
+    if (!statusEl) return;
+    if (!iso) {
+      statusEl.hidden = true;
+      statusEl.textContent = "";
+      return;
+    }
+    const week = Number(weekNumber);
+    statusEl.textContent = Number.isFinite(week)
+      ? `Saved as Week ${week} · ${formatSavedTimestamp(iso)}`
+      : `Saved ${formatSavedTimestamp(iso)}`;
+    statusEl.hidden = false;
+  }
+
+  function syncTilePlantName(tileNum, tileEl) {
+    const tile = tileEl || findGridTile(tileNum);
+    if (!tile) return;
+    const display = window.TilePlantNames?.displayName?.(tileNum) || `Tile ${tileNum}`;
+    const numEl = tile.querySelector(".farm-tile__num");
+    const titleEl = tilePopoverHost(tile).querySelector(".farm-tile__popover-title");
+    if (numEl) {
+      numEl.textContent = display;
+      numEl.classList.toggle("farm-tile__num--named", display !== `Tile ${tileNum}`);
+    }
+    if (titleEl) titleEl.textContent = display;
+  }
+
+  function loadPlantNameIntoDrawer(tileNum) {
+    if (!tilePlantNameInput) return;
+    const custom = window.TilePlantNames?.get?.(tileNum) || "";
+    const placeholder = `Tile ${tileNum}`;
+    tilePlantNameInput.value = tileNameDrafts.has(String(tileNum))
+      ? tileNameDrafts.get(String(tileNum))
+      : custom;
+    tilePlantNameInput.placeholder = placeholder;
+    if (tileDrawerTileRef) tileDrawerTileRef.textContent = placeholder;
+  }
+
+  function rememberTileNameDraft(tileNum) {
+    if (tileNum == null || !tilePlantNameInput) return;
+    const typed = tilePlantNameInput.value;
+    const saved = window.TilePlantNames?.get?.(tileNum) || "";
+    if (typed.trim() === String(saved).trim()) {
+      tileNameDrafts.delete(String(tileNum));
+      return;
+    }
+    tileNameDrafts.set(String(tileNum), typed);
+  }
+
+  function activePlantName() {
+    return tilePlantNameInput?.value.trim() || "";
+  }
+
+  function persistActivePlantName() {
+    if (activeTileNum == null || !tilePlantNameInput) return;
+    window.TilePlantNames?.set?.(activeTileNum, tilePlantNameInput.value);
+    tileNameDrafts.delete(String(activeTileNum));
+    syncTilePlantName(activeTileNum, findGridTile(activeTileNum));
+  }
+
+  function clampScorePct(value) {
+    const n = Math.min(100, Math.max(0, Number(value) || 0));
+    return window.TilePlantStorage?.roundPct?.(n) ?? n;
+  }
+
+  function fmtPct(value) {
+    return window.TilePlantStorage?.formatPct?.(value) ?? String(Math.round(Number(value) || 0));
+  }
+
+  function renderPopoverScoreBars(tile, scores, summary) {
+    const host = tilePopoverHost(tile);
+    const barsWrap = host.querySelector(".farm-tile__popover-bars");
+    const listEl = host.querySelector(".farm-tile__popover-bars-list");
+    const badgeEl = host.querySelector(".farm-tile__popover-badge");
+    if (!barsWrap || !listEl) return;
+
+    const hasScores = scores && CLASSIFICATION_ROW_ORDER.some((key) => clampScorePct(scores[key]) > 0);
+    if (!hasScores) {
+      barsWrap.hidden = true;
+      listEl.innerHTML = "";
+      if (badgeEl) badgeEl.hidden = true;
+      return;
+    }
+
+    const rows = CLASSIFICATION_ROW_ORDER.map((key) => ({
+      key,
+      pct: clampScorePct(scores[key]),
+    }));
+
+    const topPct = rows.reduce((max, row) => Math.max(max, row.pct), 0);
+    listEl.innerHTML = rows
+      .map(({ key, pct }) => {
+        const fillClass = POPOVER_FILL_CLASS[key] || POPOVER_FILL_CLASS.healthy;
+        const isTop = pct > 0 && pct === topPct;
+        return (
+          `<li class="scan-result-row scan-result-row--compact${isTop ? " scan-result-row--top" : ""}">` +
+          `<span class="scan-result-row__label">${POPOVER_BAR_LABELS[key] || key}</span>` +
+          `<div class="scan-result-row__track" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">` +
+          `<div class="scan-result-row__fill ${fillClass}" style="width:${pct}%"></div>` +
+          `</div>` +
+          `<span class="scan-result-row__value">${fmtPct(pct)}%</span>` +
+          `</li>`
+        );
+      })
+      .join("");
+
+    barsWrap.hidden = false;
+
+    const detected = rows
+      .filter((row) => row.key !== "healthy" && row.pct > 0)
+      .sort((a, b) => b.pct - a.pct);
+    if (badgeEl && detected.length) {
+      badgeEl.textContent = detected
+        .map((row) => `${POPOVER_BAR_LABELS[row.key] || row.key} ${fmtPct(row.pct)}%`)
+        .join(" · ");
+      badgeEl.hidden = false;
+      badgeEl.className = "farm-tile__popover-badge";
+      const badgeTone = POPOVER_BADGE_CLASS[detected[0].key];
+      if (badgeTone) badgeEl.classList.add(badgeTone);
+    } else if (badgeEl) {
+      badgeEl.hidden = true;
+    }
+  }
+
+  function syncTileMoodIcon(tile, summary) {
+    const iconEl = tile.querySelector(".farm-tile__icon");
+    if (!iconEl) return;
+    const moodApi = window.TomatoInsightTileEmoji;
+    const { mood, src, alt } = moodApi?.moodForSummary?.(summary) || {
+      mood: "default",
+      src: null,
+      alt: "Ready for scan",
+    };
+    iconEl.classList.remove(
+      "farm-tile__icon--default",
+      "farm-tile__icon--happy",
+      "farm-tile__icon--worry",
+      "farm-tile__icon--sad"
+    );
+    iconEl.classList.add(`farm-tile__icon--${mood}`);
+
+    if (src) {
+      let img = iconEl.querySelector("img.farm-tile__icon-img");
+      if (!img) {
+        iconEl.textContent = "";
+        img = document.createElement("img");
+        img.className = "farm-tile__icon-img";
+        img.width = 38;
+        img.height = 38;
+        img.decoding = "async";
+        iconEl.appendChild(img);
+      }
+      img.src = src;
+      img.alt = alt || "";
+    } else {
+      iconEl.innerHTML = "";
+      iconEl.textContent = moodApi?.defaultEmoji || "🌱";
+    }
+  }
+
+  function syncTileGridSummary(tileNum, tileEl) {
+    const tile = tileEl || findGridTile(tileNum);
+    if (!tile) return;
+    syncTilePlantName(tileNum, tile);
+    const info = window.TilePlantStorage?.get?.(tileNum);
+    const summary = window.TilePlantStorage?.diseaseSummaryForInfo?.(info);
+
+    syncTileMoodIcon(tile, summary);
+
+    renderPopoverScoreBars(tile, info?.scores, summary);
+
+    const hasData =
+      Boolean(info?.imageDataUrl) || Boolean(summary);
+    tile.classList.toggle("farm-tile--has-data", hasData);
+
+    const toneClass = {
+      healthy: "farm-tile--tone-healthy",
+      tlcv: "farm-tile--tone-tlcv",
+      early_blight: "farm-tile--tone-blight",
+      spotted_wilt: "farm-tile--tone-wilt",
+    };
+    tile.classList.remove(
+      "farm-tile--tone-healthy",
+      "farm-tile--tone-tlcv",
+      "farm-tile--tone-blight",
+      "farm-tile--tone-wilt"
+    );
+    const tone = summary?.barKey ? toneClass[summary.barKey] : "";
+    if (tone) tile.classList.add(tone);
+  }
+
+  function weekNumberForSave(existing) {
+    const fromCalendar = window.TomatoInsightScanCalendar?.weekForScan?.();
+    if (Number.isFinite(fromCalendar)) return fromCalendar;
+    return window.TomatoInsightSavedTiles?.weekForNextSave?.(existing) ?? 4;
+  }
+
+  function buildPlantInfoRecord() {
+    const scores = getCurrentClassificationScores();
+    const top = window.TilePlantStorage?.findTopScore?.(scores);
+    const existing = activeTileNum == null ? null : window.TilePlantStorage?.get?.(activeTileNum);
+    return {
+      savedAt: window.TomatoInsightScanCalendar?.savedAtForScan?.() || new Date().toISOString(),
+      weekNumber: weekNumberForSave(existing),
+      plantName: activePlantName(),
+      imageDataUrl: activeTileImageDataUrl || null,
+      scores,
+      topBarKey: top?.barKey ?? null,
+      topPct: top?.pct ?? 0,
+    };
+  }
+
+  function hasPlantInfoToSave() {
+    if (activeTileImageDataUrl) return true;
+    const scores = getCurrentClassificationScores();
+    return Object.values(scores).some((pct) => pct > 0);
+  }
+
+  function persistActiveTilePlantInfo() {
+    if (activeTileNum == null || !activePlantName() || !hasPlantInfoToSave()) return false;
+    const record = buildPlantInfoRecord();
+    const ok = window.TilePlantStorage?.set?.(activeTileNum, record);
+    if (ok) {
+      const calendar = window.TomatoInsightScanCalendar;
+      const schedule = calendar?.read?.();
+      if (schedule?.enabled) {
+        calendar.noteScanDate(
+          schedule.selected || schedule.anchor || calendar.isoFromDate(new Date())
+        );
+      }
+      tileDrafts.delete(String(activeTileNum));
+      syncTileGridSummary(activeTileNum);
+      updateTileSaveStatus(record.savedAt, record.weekNumber);
+      window.TomatoInsightNotifications?.syncTiles?.();
+      window.TomatoInsightHomeOverview?.refresh?.();
+    }
+    return ok;
+  }
+
+  function applyPlantInfoToDrawer(info) {
+    if (!info) {
+      updateTileSaveStatus(null);
+      return;
+    }
+
+    const zone = document.getElementById("scan-upload-zone");
+    const preview = document.getElementById("scan-upload-preview");
+    const placeholder = document.getElementById("scan-upload-placeholder");
+
+    if (info.imageDataUrl && preview) {
+      activeTileImageDataUrl = info.imageDataUrl;
+      preview.src = info.imageDataUrl;
+      preview.hidden = false;
+      if (placeholder) placeholder.hidden = true;
+      zone?.classList.add("scan-upload--has-image");
+    }
+    syncSaveInfoButton();
+
+    if (info.scores) {
+      setClassificationScores(info.scores, "stored");
+    }
+
+    updateTileSaveStatus(info.savedAt, info.weekNumber);
+  }
+
+  function loadPlantInfoForActiveTile() {
+    if (activeTileNum == null) return;
+    const info = window.TilePlantStorage?.get?.(activeTileNum);
+    if (info) applyPlantInfoToDrawer(info);
+    else updateTileSaveStatus(null);
+  }
+
+  function resetGridView() {
+    if (!gridViewport) return;
+    gridViewport.scrollTop = 0;
+    gridViewport.scrollLeft = 0;
+  }
+
+  function setGridViewportVisible(show) {
+    if (gridViewport) gridViewport.hidden = !show;
+  }
+
+  function openTileDrawer(tileNum, row, col) {
+    if (!tileDrawer) return;
+    activeTileNum = tileNum;
+    loadPlantNameIntoDrawer(tileNum);
+    if (tileDrawerPosition) {
+      tileDrawerPosition.textContent = `Row ${row + 1} · Column ${col + 1}`;
+    }
+    resetScanUploadUI();
+    loadPlantInfoForActiveTile();
+    restoreTileDraft(tileNum);
+    clearTimeout(tileDrawerCloseTimer);
+    tileDrawer.hidden = false;
+    document.body.classList.add("modal-open");
+    requestAnimationFrame(() => tileDrawer.classList.add("tile-drawer--visible"));
+  }
+
+  function plantNameForTile(tileNum) {
+    return window.TilePlantNames?.displayName?.(tileNum) || `Tile ${tileNum}`;
+  }
+
+  function clearTileReminders(tileNum) {
+    const key = "tomatoInsight.scanReminderConfirmed";
+    try {
+      const raw = JSON.parse(localStorage.getItem(key) || "[]");
+      const prefix = `${tileNum}:`;
+      const next = (Array.isArray(raw) ? raw : []).filter((item) => !String(item).startsWith(prefix));
+      localStorage.setItem(key, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function deleteTileData(tileNum) {
+    const plantName = plantNameForTile(tileNum);
+    tileDrafts.delete(String(tileNum));
+    tileNameDrafts.delete(String(tileNum));
+    if (pendingScanTile != null && String(pendingScanTile) === String(tileNum)) pendingScanTile = null;
+    window.TomatoInsightRecommendations?.forget?.(tileNum);
+    window.TilePlantNames?.set?.(tileNum, "");
+    window.TilePlantStorage?.recordDeletion?.({ tileNum, plantName });
+    window.TilePlantStorage?.remove?.(tileNum);
+    clearTileReminders(tileNum);
+
+    if (activeTileNum != null && String(activeTileNum) === String(tileNum)) {
+      activeTileNum = null;
+      resetScanUploadUI();
+      closeTileDrawer();
+    }
+
+    syncTileGridSummary(tileNum);
+    window.TomatoInsightNotifications?.syncTiles?.();
+    window.TomatoInsightHomeOverview?.refresh?.();
+  }
+
+  let pendingDeleteTile = null;
+
+  function openDeleteConfirm(tileNum) {
+    const dialog = document.getElementById("tile-delete-confirm");
+    const message = document.getElementById("tile-delete-confirm-message");
+    if (!dialog || !message) return;
+    pendingDeleteTile = tileNum;
+    const name = plantNameForTile(tileNum);
+    message.textContent = `Delete all saved data for ${name}? This removes the plant name, scans, and scores.`;
+    dialog.hidden = false;
+    dialog.querySelector("[data-cancel-tile-delete]")?.focus();
+  }
+
+  function closeDeleteConfirm() {
+    const dialog = document.getElementById("tile-delete-confirm");
+    pendingDeleteTile = null;
+    if (dialog) dialog.hidden = true;
+  }
+
+  function initDeleteConfirm() {
+    const dialog = document.getElementById("tile-delete-confirm");
+    if (!dialog) return;
+    dialog.querySelectorAll("[data-cancel-tile-delete]").forEach((el) => {
+      el.addEventListener("click", closeDeleteConfirm);
+    });
+    document.getElementById("tile-delete-confirm-ok")?.addEventListener("click", () => {
+      const tileNum = pendingDeleteTile;
+      closeDeleteConfirm();
+      if (tileNum != null) deleteTileData(tileNum);
+    });
+  }
+
+  function draftHasScores(scores) {
+    return Boolean(scores && Object.values(scores).some((pct) => Number(pct) > 0));
+  }
+
+  function rememberTileDraft(tileNum, patch) {
+    if (tileNum == null || suppressDraft) return;
+    const key = String(tileNum);
+    const prev = tileDrafts.get(key) || {};
+    const next = {
+      imageDataUrl:
+        patch.imageDataUrl !== undefined ? patch.imageDataUrl : prev.imageDataUrl || null,
+      scores: patch.scores !== undefined ? patch.scores : prev.scores || null,
+    };
+    if (!next.imageDataUrl && !draftHasScores(next.scores)) {
+      tileDrafts.delete(key);
+      return;
+    }
+
+    const saved = window.TilePlantStorage?.get?.(tileNum);
+    const imageSame = (next.imageDataUrl || null) === (saved?.imageDataUrl || null);
+    const scoresSame = CLASSIFICATION_ROW_ORDER.every((scoreKey) => {
+      const current = Math.min(100, Math.max(0, Number(next.scores?.[scoreKey]) || 0));
+      const stored = Math.min(100, Math.max(0, Number(saved?.scores?.[scoreKey]) || 0));
+      return Math.abs(current - stored) < 0.05;
+    });
+    if (imageSame && scoresSame) {
+      tileDrafts.delete(key);
+      return;
+    }
+    tileDrafts.set(key, next);
+  }
+
+  function snapshotOpenDrawer() {
+    if (activeTileNum == null) return;
+    const preview = document.getElementById("scan-upload-preview");
+    const imageDataUrl =
+      activeTileImageDataUrl || (preview && !preview.hidden ? preview.src || null : null);
+    rememberTileDraft(activeTileNum, {
+      imageDataUrl,
+      scores: getCurrentClassificationScores(),
+    });
+  }
+
+  function restoreTileDraft(tileNum) {
+    const draft = tileDrafts.get(String(tileNum));
+    if (!draft) return;
+    const zone = document.getElementById("scan-upload-zone");
+    const preview = document.getElementById("scan-upload-preview");
+    const placeholder = document.getElementById("scan-upload-placeholder");
+    if (draft.imageDataUrl && preview) {
+      activeTileImageDataUrl = draft.imageDataUrl;
+      preview.src = draft.imageDataUrl;
+      preview.hidden = false;
+      if (placeholder) placeholder.hidden = true;
+      zone?.classList.add("scan-upload--has-image");
+    }
+    if (draft.scores) setClassificationScores(draft.scores, "stored");
+    syncSaveInfoButton();
+  }
+
+  function closeTileDrawer() {
+    if (!tileDrawer) return;
+    snapshotOpenDrawer();
+    rememberTileNameDraft(activeTileNum);
+    tileDrawer.classList.remove("tile-drawer--visible");
+    clearTimeout(tileDrawerCloseTimer);
+    tileDrawerCloseTimer = setTimeout(() => {
+      tileDrawer.hidden = true;
+      if (modal.hidden) document.body.classList.remove("modal-open");
+    }, 320);
+  }
+
+  function getClassificationList() {
+    return tileDrawer?.querySelector(".scan-results__list");
+  }
+
+  function restoreClassificationRowOrder() {
+    const list = getClassificationList();
+    if (!list) return;
+    CLASSIFICATION_ROW_ORDER.forEach((key) => {
+      const row = tileDrawer.querySelector(
+        `.scan-result-row__fill[data-class="${key}"]`
+      )?.closest(".scan-result-row");
+      if (row) list.appendChild(row);
+    });
+  }
+
+  function setClassificationScores(scores, source) {
+    if (!tileDrawer) return;
+    const fromScan = source === "scan";
+    const scanTile = pendingScanTile;
+    const updateDom = !fromScan || (scanTile != null && String(scanTile) === String(activeTileNum));
+    const keys = CLASSIFICATION_ROW_ORDER;
+    let totalScore = 0;
+    keys.forEach((key) => {
+      const pct = Math.min(100, Math.max(0, Number(scores?.[key]) || 0));
+      totalScore += pct;
+      if (!updateDom) return;
+      const fill = tileDrawer.querySelector(`.scan-result-row__fill[data-class="${key}"]`);
+      const val = tileDrawer.querySelector(`.scan-result-row__value[data-class="${key}"]`);
+      const track = fill?.parentElement;
+      if (fill) fill.style.width = `${pct}%`;
+      if (val) val.textContent = `${fmtPct(pct)}%`;
+      if (track) track.setAttribute("aria-valuenow", String(Math.round(pct)));
+    });
+
+    if (updateDom) restoreClassificationRowOrder();
+
+    if (fromScan && scanTile != null) {
+      rememberTileDraft(scanTile, { scores });
+    }
+
+    if (!updateDom) return;
+    const hasImage = document
+      .getElementById("scan-upload-zone")
+      ?.classList.contains("scan-upload--has-image");
+    window.TomatoInsightRecommendations?.onScoresUpdated?.(
+      totalScore > 0 && hasImage ? scores : {},
+      activeTileNum
+    );
+  }
+
+  function resetScanUploadUI() {
+    const zone = document.getElementById("scan-upload-zone");
+    const input = document.getElementById("scan-upload-input");
+    const preview = document.getElementById("scan-upload-preview");
+    const placeholder = document.getElementById("scan-upload-placeholder");
+    suppressDraft = true;
+    if (input) input.value = "";
+    if (preview) {
+      preview.hidden = true;
+      preview.removeAttribute("src");
+    }
+    if (placeholder) placeholder.hidden = false;
+    zone?.classList.remove("scan-upload--has-image", "scan-upload--dragover", "scan-upload--validating");
+    const status = document.getElementById("scan-upload-status");
+    if (status) status.hidden = true;
+    window.TomatoInsightValidation?.resetUI?.();
+    activeTileImageDataUrl = null;
+    setClassificationScores({}, "reset");
+    updateTileSaveStatus(null);
+    suppressDraft = false;
+    syncSaveInfoButton();
+  }
+
+  function syncSaveInfoButton() {
+    const saveBtn = document.getElementById("tile-save-info-btn");
+    if (!saveBtn) return;
+    const zone = document.getElementById("scan-upload-zone");
+    const loading = zone?.classList.contains("scan-upload--validating");
+    const hasImage = zone?.classList.contains("scan-upload--has-image");
+    saveBtn.disabled = Boolean(loading || !hasImage);
+  }
+
+  function showScanPreview(file, tileNum) {
+    const zone = document.getElementById("scan-upload-zone");
+    const preview = document.getElementById("scan-upload-preview");
+    const placeholder = document.getElementById("scan-upload-placeholder");
+    if (!file?.type?.startsWith("image/")) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : null;
+      if (!dataUrl) return;
+      rememberTileDraft(tileNum, { imageDataUrl: dataUrl });
+      if (String(activeTileNum) !== String(tileNum)) return;
+      activeTileImageDataUrl = dataUrl;
+      if (preview) {
+        preview.src = dataUrl;
+        preview.hidden = false;
+      }
+      if (placeholder) placeholder.hidden = true;
+      zone?.classList.add("scan-upload--has-image");
+      syncSaveInfoButton();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleScanImageFile(file) {
+    if (!file?.type?.startsWith("image/")) return;
+    pendingScanTile = activeTileNum;
+    showScanPreview(file, activeTileNum);
+    window.TomatoInsightValidation?.validateImageFile?.(file);
+  }
+
+  function initScanUpload() {
+    const zone = document.getElementById("scan-upload-zone");
+    const input = document.getElementById("scan-upload-input");
+    if (!zone || !input) return;
+
+    zone.addEventListener("click", (e) => {
+      if (e.target === input) return;
+      input.click();
+    });
+    zone.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        input.click();
+      }
+    });
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (file) handleScanImageFile(file);
+    });
+    ["dragenter", "dragover"].forEach((type) => {
+      zone.addEventListener(type, (e) => {
+        e.preventDefault();
+        zone.classList.add("scan-upload--dragover");
+      });
+    });
+    zone.addEventListener("dragleave", () => zone.classList.remove("scan-upload--dragover"));
+    zone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      zone.classList.remove("scan-upload--dragover");
+      const file = e.dataTransfer?.files?.[0];
+      if (file) handleScanImageFile(file);
+    });
+  }
+
+  function initTileDrawer() {
+    if (!tileDrawer) return;
+    tileDrawer.querySelectorAll("[data-close-tile-drawer]").forEach((el) => {
+      el.addEventListener("click", closeTileDrawer);
+    });
+    initScanUpload();
+
+    tilePlantNameInput?.addEventListener("input", () => {
+      const statusEl = document.getElementById("tile-save-status");
+      if (
+        activePlantName() &&
+        statusEl?.textContent === "Enter a plant name before saving."
+      ) {
+        showTileSaveMessage("");
+      }
+      rememberTileNameDraft(activeTileNum);
+    });
+
+    const saveBtn = document.getElementById("tile-save-info-btn");
+    saveBtn?.addEventListener("click", async () => {
+      if (saveBtn.disabled) return;
+      if (!activePlantName()) {
+        showTileSaveMessage("Enter a plant name before saving.");
+        tilePlantNameInput?.focus();
+        return;
+      }
+      if (!hasPlantInfoToSave()) {
+        updateTileSaveStatus(null);
+        return;
+      }
+      const original = saveBtn.textContent;
+      const savedTile = activeTileNum;
+      const savedScores = getCurrentClassificationScores();
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving...";
+      persistActivePlantName();
+      if (window.TomatoInsightRecommendations?.captureForSave) {
+        try {
+          await window.TomatoInsightRecommendations.captureForSave(savedTile, savedScores);
+        } catch (err) {
+          console.error("[TomatoInsight] Could not store care recommendation:", err);
+        }
+      }
+      const ok = persistActiveTilePlantInfo();
+      saveBtn.disabled = false;
+      if (ok) {
+        saveBtn.textContent = "Saved!";
+        setTimeout(() => {
+          if (saveBtn.textContent === "Saved!") saveBtn.textContent = original;
+        }, 1600);
+      } else {
+        saveBtn.textContent = original;
+      }
+    });
+  }
+
+  window.TomatoInsightScan = {
+    setClassificationScores(scores) {
+      setClassificationScores(scores, "scan");
+    },
+    syncSaveInfoButton,
+  };
+
+  function tilePopoverHost(tile) {
+    return tile?.closest(".farm-tile-cell") || tile;
+  }
+
+  function adjustTilePopoverPlacement(tile) {
+    const popover = tilePopoverHost(tile).querySelector(".farm-tile__popover");
+    if (!popover || !gridViewport || gridViewport.hidden) return;
+
+    popover.classList.remove("farm-tile__popover--below");
+    popover.classList.add("farm-tile__popover--placement");
+
+    const margin = 10;
+    const vp = gridViewport.getBoundingClientRect();
+    let rect = popover.getBoundingClientRect();
+
+    if (rect.top < vp.top + margin) {
+      popover.classList.add("farm-tile__popover--below");
+      rect = popover.getBoundingClientRect();
+    }
+
+    if (popover.classList.contains("farm-tile__popover--below") && rect.bottom > vp.bottom - margin) {
+      popover.classList.remove("farm-tile__popover--below");
+    }
+
+    popover.classList.remove("farm-tile__popover--placement");
+  }
+
+  function bindTilePopoverPlacement(tile) {
+    const refreshNote = () => {
+      const num = tile.dataset.tile;
+      if (num) syncTileGridSummary(num);
+    };
+    tile.addEventListener("mouseenter", () => {
+      refreshNote();
+      adjustTilePopoverPlacement(tile);
+    });
+    tile.addEventListener("focus", () => {
+      refreshNote();
+      adjustTilePopoverPlacement(tile);
+    });
+    tile.addEventListener("mouseleave", () => {
+      tilePopoverHost(tile).querySelector(".farm-tile__popover")?.classList.remove("farm-tile__popover--below");
+    });
+  }
+
+  function getTileNumber(r, c, rows, columns) {
+    const fromBottomRow = rows - 1 - r;
+    const isEvenFromBottom = fromBottomRow % 2 === 0;
+    const colOffset = isEvenFromBottom ? columns - 1 - c : c;
+    return fromBottomRow * columns + colOffset + 1;
+  }
+
+  function clamp(value) {
+    const n = parseInt(String(value), 10);
+    if (Number.isNaN(n)) return MIN;
+    return Math.min(MAX, Math.max(MIN, n));
+  }
+
+  function loadLayout() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (data.rows >= MIN && data.columns >= MIN) {
+        return { rows: clamp(data.rows), columns: clamp(data.columns) };
+      }
+    } catch (_) {
+      /* ignore */
+    }
+    return null;
+  }
+
+  function tileNumbersForLayout(rows, columns) {
+    const numbers = new Set();
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < columns; c++) numbers.add(getTileNumber(r, c, rows, columns));
+    }
+    return numbers;
+  }
+
+  function tilesRemovedByLayout(rows, columns) {
+    const kept = tileNumbersForLayout(rows, columns);
+    const affected = new Set();
+
+    const saved = window.TilePlantStorage?.loadAll?.() || {};
+    Object.entries(saved).forEach(([num, info]) => {
+      const tileNum = Number(num);
+      if (!Number.isFinite(tileNum) || kept.has(tileNum)) return;
+      if (window.TomatoInsightSavedTiles?.tileHasSavedInfo?.(info)) affected.add(tileNum);
+    });
+
+    const names = window.TilePlantNames?.loadAll?.() || {};
+    Object.entries(names).forEach(([num, name]) => {
+      const tileNum = Number(num);
+      if (!Number.isFinite(tileNum) || kept.has(tileNum)) return;
+      if (String(name || "").trim()) affected.add(tileNum);
+    });
+
+    tileDrafts.forEach((draft, num) => {
+      const tileNum = Number(num);
+      if (!Number.isFinite(tileNum) || kept.has(tileNum)) return;
+      if (draft?.imageDataUrl || draftHasScores(draft?.scores)) affected.add(tileNum);
+    });
+
+    tileNameDrafts.forEach((name, num) => {
+      const tileNum = Number(num);
+      if (!Number.isFinite(tileNum) || kept.has(tileNum)) return;
+      if (String(name || "").trim()) affected.add(tileNum);
+    });
+
+    if (activeTileNum != null && !kept.has(Number(activeTileNum))) {
+      const preview = document.getElementById("scan-upload-preview");
+      const imageDataUrl =
+        activeTileImageDataUrl || (preview && !preview.hidden ? preview.src || null : null);
+      if (imageDataUrl || draftHasScores(getCurrentClassificationScores())) {
+        affected.add(Number(activeTileNum));
+      }
+    }
+
+    return [...affected].sort((a, b) => a - b);
+  }
+
+  function showLayoutBlockedAlert(tileNums) {
+    const names = tileNums.map(
+      (tileNum) => window.TilePlantNames?.displayName?.(tileNum) || `Tile ${tileNum}`
+    );
+    const list = names.length === 1 ? names[0] : names.join(", ");
+    const message =
+      names.length === 1
+        ? `Layout can't be changed because ${list} still has data and would be removed.`
+        : `Layout can't be changed because these tiles still have data and would be removed: ${list}.`;
+
+    const note = document.getElementById("layout-blocked-message");
+    if (note) {
+      note.textContent = message;
+      note.hidden = false;
+    }
+    window.alert(message);
+  }
+
+  function clearLayoutBlockedAlert() {
+    const note = document.getElementById("layout-blocked-message");
+    if (!note) return;
+    note.hidden = true;
+    note.textContent = "";
+  }
+
+  function saveLayout(rows, columns) {
+    layout = { rows, columns };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+    window.TomatoInsightStorageSnapshot?.schedule?.();
+    window.TomatoInsightUserData?.syncLayout?.(layout);
+    window.TomatoInsightUserData?.flushFarmToCloud?.();
+    renderDashboard();
+  }
+
+  function renderPreview(rows, columns) {
+    previewGrid.innerHTML = "";
+    previewGrid.style.setProperty("--farm-cols", String(columns));
+    previewCount.textContent = String(rows * columns);
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < columns; c++) {
+        const tile = document.createElement("div");
+        tile.className = "farm-tile farm-tile--preview";
+        tile.textContent = getTileNumber(r, c, rows, columns);
+        previewGrid.appendChild(tile);
+      }
+    }
+  }
+
+  function readFormDimensions() {
+    const rows = clamp(rowsInput.value);
+    const columns = clamp(colsInput.value);
+    rowsInput.value = rows;
+    colsInput.value = columns;
+    return { rows, columns };
+  }
+
+  function renderDashboard() {
+    if (!layout) {
+      workspace.classList.add("farm-workspace--empty");
+      if (emptyState) emptyState.hidden = false;
+      setGridViewportVisible(false);
+      gridHost.innerHTML = "";
+      resetGridView();
+      if (layoutSummary) {
+        layoutSummary.hidden = false;
+        layoutSummary.textContent = "Not set";
+      }
+      if (totalPlantsEl) totalPlantsEl.textContent = "0";
+      window.TomatoInsightHomeOverview?.refresh?.();
+      return;
+    }
+
+    const { rows, columns } = layout;
+    workspace.classList.remove("farm-workspace--empty");
+    if (emptyState) emptyState.hidden = true;
+    setGridViewportVisible(true);
+    gridHost.innerHTML = "";
+    gridHost.style.setProperty("--farm-cols", String(columns));
+    resetGridView();
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < columns; c++) {
+        const tileNum = getTileNumber(r, c, rows, columns);
+        const cell = document.createElement("div");
+        cell.className = "farm-tile-cell";
+
+        const tile = document.createElement("button");
+        tile.type = "button";
+        tile.className = "farm-tile";
+        tile.dataset.tile = String(tileNum);
+        tile.innerHTML =
+          '<span class="farm-tile__icon farm-tile__icon--default" aria-hidden="true">🌱</span>' +
+          `<span class="farm-tile__num">${tileNum}</span>`;
+
+        const popover = document.createElement("span");
+        popover.className = "farm-tile__popover";
+        popover.setAttribute("role", "tooltip");
+        popover.innerHTML =
+          `<span class="farm-tile__popover-head">` +
+          `<span class="farm-tile__popover-title">Tile ${tileNum}</span>` +
+          `<span class="farm-tile__popover-badge" hidden></span>` +
+          `</span>` +
+          `<div class="farm-tile__popover-bars" hidden>` +
+          `<p class="farm-tile__popover-bars-title">Scan results</p>` +
+          `<ul class="farm-tile__popover-bars-list scan-results__list"></ul>` +
+          `</div>`;
+        tile.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openTileDrawer(tileNum, r, c);
+        });
+
+        const notifyBtn = document.createElement("button");
+        notifyBtn.type = "button";
+        notifyBtn.className = "farm-tile__notify";
+        notifyBtn.setAttribute("aria-label", `Notifications for Tile ${tileNum}`);
+        notifyBtn.setAttribute("aria-expanded", "false");
+        notifyBtn.setAttribute("aria-controls", `tile-notify-${tileNum}`);
+        notifyBtn.innerHTML =
+          `<svg viewBox="0 0 24 24" aria-hidden="true">` +
+          `<path fill="currentColor" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>` +
+          `</svg>` +
+          `<span class="farm-tile__notify-count" hidden>0</span>`;
+        notifyBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          window.TomatoInsightNotifications?.toggleTilePopup?.(tileNum, notifyBtn);
+        });
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "farm-tile__delete";
+        deleteBtn.setAttribute("aria-label", `Delete Tile ${tileNum}`);
+        deleteBtn.innerHTML =
+          `<svg viewBox="0 0 24 24" aria-hidden="true">` +
+          `<path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>` +
+          `</svg>`;
+        deleteBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openDeleteConfirm(tileNum);
+        });
+
+        const popup = document.createElement("div");
+        popup.className = "farm-tile__notify-popup";
+        popup.id = `tile-notify-${tileNum}`;
+        popup.hidden = true;
+        popup.setAttribute("role", "dialog");
+        popup.setAttribute("aria-label", `Notifications for Tile ${tileNum}`);
+
+        cell.append(tile, notifyBtn, deleteBtn, popup, popover);
+        gridHost.appendChild(cell);
+        syncTileGridSummary(tileNum, tile);
+        bindTilePopoverPlacement(tile);
+      }
+    }
+
+    window.TomatoInsightNotifications?.syncTiles?.();
+
+    if (layoutSummary) {
+      layoutSummary.hidden = false;
+      layoutSummary.textContent = `${rows} × ${columns}`;
+    }
+    if (totalPlantsEl) {
+      totalPlantsEl.textContent = String(rows * columns);
+    }
+    window.TomatoInsightHomeOverview?.refresh?.();
+
+  }
+
+  function openModal() {
+    const rows = layout ? layout.rows : 3;
+    const columns = layout ? layout.columns : 3;
+    rowsInput.value = rows;
+    colsInput.value = columns;
+    renderPreview(rows, columns);
+    clearLayoutBlockedAlert();
+    modal.hidden = false;
+    document.body.classList.add("modal-open");
+    rowsInput.focus();
+  }
+
+  function closeModal() {
+    modal.hidden = true;
+    document.body.classList.remove("modal-open");
+  }
+
+  workspace.addEventListener("click", () => {
+    if (workspace.classList.contains("farm-workspace--empty")) {
+      openModal();
+    }
+  });
+
+  workspace.addEventListener("keydown", (e) => {
+    if (
+      workspace.classList.contains("farm-workspace--empty") &&
+      (e.key === "Enter" || e.key === " ")
+    ) {
+      e.preventDefault();
+      openModal();
+    }
+  });
+
+  document.getElementById("btn-edit-layout")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openModal();
+  });
+
+  modal.querySelectorAll("[data-close-modal]").forEach((el) => {
+    el.addEventListener("click", closeModal);
+  });
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal.querySelector(".modal__backdrop")) {
+      closeModal();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    const deleteConfirm = document.getElementById("tile-delete-confirm");
+    if (deleteConfirm && !deleteConfirm.hidden) {
+      closeDeleteConfirm();
+      return;
+    }
+    if (tileDrawer && !tileDrawer.hidden && tileDrawer.classList.contains("tile-drawer--visible")) {
+      closeTileDrawer();
+      return;
+    }
+    if (!modal.hidden) closeModal();
+  });
+
+  function bindStepper(btnId, inputId, delta) {
+    document.getElementById(btnId)?.addEventListener("click", () => {
+      const input = document.getElementById(inputId);
+      input.value = clamp(parseInt(input.value, 10) + delta);
+      const dims = readFormDimensions();
+      renderPreview(dims.rows, dims.columns);
+      clearLayoutBlockedAlert();
+    });
+  }
+
+  bindStepper("rows-decrement", "input-rows", -1);
+  bindStepper("rows-increment", "input-rows", 1);
+  bindStepper("cols-decrement", "input-columns", -1);
+  bindStepper("cols-increment", "input-columns", 1);
+
+  rowsInput.addEventListener("input", () => {
+    const dims = readFormDimensions();
+    renderPreview(dims.rows, dims.columns);
+    clearLayoutBlockedAlert();
+  });
+  colsInput.addEventListener("input", () => {
+    const dims = readFormDimensions();
+    renderPreview(dims.rows, dims.columns);
+    clearLayoutBlockedAlert();
+  });
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const { rows, columns } = readFormDimensions();
+    const affected = tilesRemovedByLayout(rows, columns);
+    if (affected.length) {
+      showLayoutBlockedAlert(affected);
+      return;
+    }
+    clearLayoutBlockedAlert();
+    saveLayout(rows, columns);
+    closeModal();
+  });
+
+  initTileDrawer();
+  initDeleteConfirm();
+
+  function reloadFarmFromStorage() {
+    layout = loadLayout();
+    renderDashboard();
+  }
+
+  window.addEventListener("tomatoInsight:userDataReady", reloadFarmFromStorage);
+  window.addEventListener("tomatoInsight:userDataCleared", reloadFarmFromStorage);
+
+  renderDashboard();
+})();

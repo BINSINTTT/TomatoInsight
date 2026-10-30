@@ -1,0 +1,11 @@
+js/Firebase/firebase-config.js
+js/TomatoValidator/roboflow-config.js
+js/DiseaseClassification/disease-classification-config.js
+server/.env
+server/data/*.accdb
+server/debug/local-storage-snapshot.txt
+server/server-start.log
+server/server-start.err
+__pycache__/
+*.pyc
+.firebase/

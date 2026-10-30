@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en" data-auth="required">
+  <head>
+    <meta charset="UTF-8" />
+    <script src="../js/api-config.js"></script>
+    <script src="../js/Authentication/auth-session.js"></script>
+    <script src="../js/Firebase/firebase-config.js"></script>
+    <script type="module" src="../js/Authentication/auth-guard.module.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      try {
+        if (localStorage.getItem("tomatoInsight.sidebarCollapsed") === "1") {
+          document.documentElement.classList.add("sidebar-collapsed");
+        }
+      } catch (e) {}
+    </script>
+    <title>Tomato Insight — Dashboard</title>
+    <link rel="icon" href="../img/LogoTomatoInsight.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/base.css" />
+    <link rel="stylesheet" href="../css/home.css" />
+  </head>
+  <body>
+    <div class="viewport">
+      <div class="dashboard-shell" role="application" aria-label="Tomato Insight dashboard">
+        <aside class="sidebar" aria-label="Main navigation">
+          <div class="sidebar__top">
+            <a class="brand" href="index.html" aria-label="Tomato Insight home">
+              <span class="brand__mark">
+                <img
+                  class="brand__mark-img"
+                  src="../img/LogoTomatoInsight.png"
+                  alt=""
+                  width="40"
+                  height="40"
+                  decoding="async"
+                />
+              </span>
+              <span class="brand__text">
+                <span class="brand__name">Tomato Insight</span>
+                <span class="brand__tagline">Farm dashboard</span>
+              </span>
+            </a>
+            <button type="button" class="sidebar__toggle" id="sidebar-toggle" aria-expanded="true" aria-label="Hide sidebar labels">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+              </svg>
+            </button>
+
+            <nav class="nav">
+              <a class="nav__link nav__link--active" href="index.html" aria-current="page">
+                <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+                </svg>
+                Home
+              </a>
+              <a class="nav__link" href="monitoring.html">
+                <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M20 3H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h3l-1 1v1h12v-1l-1-1h3c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 13H4V5h16v11z"
+                  />
+                </svg>
+                Monitoring
+              </a>
+             
+              <a class="nav__link" href="history.html">
+                <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"
+                  />
+                </svg>
+                History
+              </a>
+              <a class="nav__link" href="profile.html">
+                <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                  />
+                </svg>
+                Profile
+              </a>
+            </nav>
+          </div>
+
+          <a class="sidebar__avatar" href="profile.html" aria-label="Open profile">
+            <span class="sidebar__avatar-face">
+              <span class="sidebar__avatar-dot" aria-hidden="true"></span>
+              <span class="sidebar__avatar-status" aria-hidden="true"></span>
+            </span>
+            <span class="sidebar__avatar-name" hidden></span>
+          </a>
+        </aside>
+
+        <div class="content-frame">
+          <main class="main-panel">
+            <header class="page-header home-header">
+              <div>
+                <p class="page-header__eyebrow">Welcome back,</p>
+                <h1 class="page-header__title" id="home-welcome-name">…</h1>
+              </div>
+              <p class="home-date" id="home-today" aria-label="Today">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z" />
+                </svg>
+                <span id="home-today-text">Today</span>
+              </p>
+            </header>
+
+            <div class="dashboard-metrics">
+              <div class="metric-card">
+                <span class="metric-card__icon metric-card__icon--plants" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 22c-.55 0-1-.45-1-1v-5.07C7.06 15.44 4 12.08 4 8V6h2c2.46 0 4.63 1.24 5.92 3.13C12.97 5.58 16.2 3 20 3h1v2c0 4.42-3.13 8.11-7.29 8.94L13 14v7c0 .55-.45 1-1 1z" /></svg>
+                </span>
+                <div class="metric-card__text">
+                  <span class="metric-card__value" id="metric-total-plants">0</span>
+                  <span class="metric-card__label">Total plants</span>
+                </div>
+              </div>
+              <div class="metric-card">
+                <span class="metric-card__icon metric-card__icon--healthy" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
+                </span>
+                <div class="metric-card__text">
+                  <span class="metric-card__value" id="metric-healthy-plants">0</span>
+                  <span class="metric-card__label">Healthy</span>
+                </div>
+              </div>
+              <div class="metric-card">
+                <span class="metric-card__icon metric-card__icon--alert" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path fill="currentColor" d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" /></svg>
+                </span>
+                <div class="metric-card__text">
+                  <span class="metric-card__value" id="metric-issue-plants">0</span>
+                  <span class="metric-card__label">Need attention</span>
+                </div>
+              </div>
+              <div class="metric-card">
+                <span class="metric-card__icon metric-card__icon--layout" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" /></svg>
+                </span>
+                <div class="metric-card__text">
+                  <span class="metric-card__value metric-card__value--small" id="farm-layout-summary">Not set</span>
+                  <span class="metric-card__label">Layout</span>
+                </div>
+              </div>
+            </div>
+
+            <section
+              class="farm-workspace farm-workspace--empty"
+              id="farm-workspace"
+              aria-label="Farm grid"
+              tabindex="0"
+            >
+              <div class="farm-workspace__toolbar">
+                <div class="farm-workspace__heading">
+                  <h2 class="farm-workspace__title">Farm blueprint</h2>
+                  <p class="farm-workspace__subtitle">Tap a plant to scan, save, and track it.</p>
+                </div>
+                <div class="farm-workspace__actions">
+                  <ul class="farm-legend" aria-label="Tile colors">
+                    <li><span class="farm-legend__dot farm-legend__dot--healthy"></span>Healthy</li>
+                    <li><span class="farm-legend__dot farm-legend__dot--tlcv"></span>TLCV</li>
+                    <li><span class="farm-legend__dot farm-legend__dot--blight"></span>Early blight</li>
+                    <li><span class="farm-legend__dot farm-legend__dot--wilt"></span>Spotted wilt</li>
+                  </ul>
+                  <button type="button" class="btn-text" id="btn-edit-layout">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" /></svg>
+                    Edit layout
+                  </button>
+                </div>
+              </div>
+
+              <div class="farm-empty-state" id="farm-empty-state">
+                <span class="farm-empty-state__icon" aria-hidden="true">+</span>
+                <p class="farm-empty-state__title">Add farm blueprint</p>
+                <p class="farm-empty-state__hint">Click here to set rows and columns for your tomato farm</p>
+              </div>
+
+              <div class="farm-grid-viewport" id="farm-grid-viewport" hidden>
+           
+                <div class="farm-grid-stage" id="farm-grid-stage">
+                  <div class="farm-grid" id="farm-grid" role="grid" aria-label="Farm tiles"></div>
+                </div>
+              </div>
+            </section>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" id="layout-modal" hidden>
+      <div class="modal__backdrop" data-close-modal aria-hidden="true"></div>
+      <div
+        class="modal__panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="layout-modal-title"
+      >
+        <header class="modal__header">
+          <h2 class="modal__title" id="layout-modal-title">Farm layout setup</h2>
+          <button type="button" class="modal__close" data-close-modal aria-label="Close">×</button>
+        </header>
+
+        <form class="modal__body" id="layout-form">
+          <p class="modal__intro">Configure rows and columns (1–6 each), matching the mobile app.</p>
+
+          <div class="stepper-row">
+            <div class="stepper">
+              <span class="stepper__label">Rows</span>
+              <div class="stepper__controls">
+                <button type="button" class="stepper__btn" id="rows-decrement" aria-label="Decrease rows">
+                  −
+                </button>
+                <input
+                  class="stepper__input"
+                  type="number"
+                  id="input-rows"
+                  min="1"
+                  max="10"
+                  value="3"
+                  required
+                />
+                <button type="button" class="stepper__btn" id="rows-increment" aria-label="Increase rows">
+                  +
+                </button>
+              </div>
+            </div>
+            <div class="stepper">
+              <span class="stepper__label">Columns</span>
+              <div class="stepper__controls">
+                <button type="button" class="stepper__btn" id="cols-decrement" aria-label="Decrease columns">
+                  −
+                </button>
+                <input
+                  class="stepper__input"
+                  type="number"
+                  id="input-columns"
+                  min="1"
+                  max="10"
+                  value="3"
+                  required
+                />
+                <button type="button" class="stepper__btn" id="cols-increment" aria-label="Increase columns">
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-preview">
+            <p class="modal-preview__label">
+              Preview · <span id="modal-preview-count">9</span> plants
+            </p>
+            <div class="farm-grid farm-grid--preview" id="modal-preview-grid"></div>
+          </div>
+
+          <p class="modal__error" id="layout-blocked-message" hidden></p>
+          <footer class="modal__footer">
+            <button type="button" class="btn btn--ghost" data-close-modal>Cancel</button>
+            <button type="submit" class="btn btn--primary">Save blueprint</button>
+          </footer>
+        </form>
+      </div>
+    </div>
+
+    <div class="tile-drawer" id="tile-drawer" hidden>
+      <div class="tile-drawer__backdrop" data-close-tile-drawer tabindex="-1" aria-hidden="true"></div>
+      <aside
+        class="tile-drawer__panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tile-plant-name-input"
+      >
+        <header class="tile-drawer__header">
+          <div class="tile-drawer__header-main">
+            <label class="tile-drawer__eyebrow" for="tile-plant-name-input">Plant name</label>
+            <input
+              type="text"
+              class="tile-drawer__name-input"
+              id="tile-plant-name-input"
+              placeholder="Tile 1"
+              maxlength="48"
+              autocomplete="off"
+              required
+            />
+          
+          </div>
+          <button type="button" class="modal__close" data-close-tile-drawer aria-label="Close">×</button>
+        </header>
+        <div class="tile-drawer__body">
+        
+
+          <div
+            class="scan-upload"
+            id="scan-upload-zone"
+            role="button"
+            tabindex="0"
+            aria-label="Upload plant image for analysis"
+          >
+            <input
+              type="file"
+              id="scan-upload-input"
+              class="scan-upload__input"
+              accept="image/*"
+              hidden
+            />
+            <div class="scan-upload__placeholder" id="scan-upload-placeholder">
+              <span class="scan-upload__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="40" height="40" fill="currentColor">
+                  <path
+                    d="M19 7v2.99s-1.99.01-2 0V7h-3s.01-1.99 0-2h3V2h2v3h3v2h-3zm-3 4V8h-3V5H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h-3zM5 19l3-4 2 3 3-4 4 5H5z"
+                  />
+                </svg>
+              </span>
+              <p class="scan-upload__title">Drop image here</p>
+              <p class="scan-upload__subtitle">or click to browse · JPG, PNG</p>
+            </div>
+            <img class="scan-upload__preview" id="scan-upload-preview" alt="Uploaded plant preview" hidden />
+            <p class="scan-upload__status" id="scan-upload-status" hidden aria-live="polite" aria-label="Classifying image">
+              <span class="scan-upload__spinner" aria-hidden="true"></span>
+            </p>
+          </div>
+
+          <div
+            class="validation-alert"
+            id="validation-alert"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="validation-alert-title"
+            aria-describedby="validation-alert-message"
+            hidden
+          >
+            <div class="validation-alert__backdrop" data-close-validation-alert tabindex="-1"></div>
+            <div class="validation-alert__panel">
+              <h3 class="validation-alert__title" id="validation-alert-title">Validation</h3>
+              <p class="validation-alert__message" id="validation-alert-message"></p>
+              <button type="button" class="validation-alert__ok" id="validation-alert-ok">OK</button>
+            </div>
+          </div>
+
+          <section class="scan-results" aria-labelledby="scan-results-heading">
+            <h3 class="scan-results__heading" id="scan-results-heading">Classification</h3>
+            <ul class="scan-results__list">
+              <li class="scan-result-row">
+                <span class="scan-result-row__label">Healthy</span>
+                <div class="scan-result-row__track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                  <div class="scan-result-row__fill scan-result-row__fill--healthy" data-class="healthy" style="width: 0%"></div>
+                </div>
+                <span class="scan-result-row__value" data-class="healthy">0%</span>
+              </li>
+              <li class="scan-result-row">
+                <span class="scan-result-row__label">TLCV</span>
+                <div class="scan-result-row__track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                  <div class="scan-result-row__fill scan-result-row__fill--tlcv" data-class="tlcv" style="width: 0%"></div>
+                </div>
+                <span class="scan-result-row__value" data-class="tlcv">0%</span>
+              </li>
+              <li class="scan-result-row">
+                <span class="scan-result-row__label">Early Blight</span>
+                <div class="scan-result-row__track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                  <div
+                    class="scan-result-row__fill scan-result-row__fill--blight"
+                    data-class="early_blight"
+                    style="width: 0%"
+                  ></div>
+                </div>
+                <span class="scan-result-row__value" data-class="early_blight">0%</span>
+              </li>
+              <li class="scan-result-row">
+                <span class="scan-result-row__label">Spotted Wilt</span>
+                <div class="scan-result-row__track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                  <div
+                    class="scan-result-row__fill scan-result-row__fill--wilt"
+                    data-class="spotted_wilt"
+                    style="width: 0%"
+                  ></div>
+                </div>
+                <span class="scan-result-row__value" data-class="spotted_wilt">0%</span>
+              </li>
+            </ul>
+            <button
+              type="button"
+              class="scan-results__advice-btn"
+              id="scan-treatment-btn"
+              aria-expanded="false"
+              aria-controls="scan-treatment-panel"
+              hidden
+              disabled
+            >
+              View care recommendations
+            </button>
+            <div
+              class="scan-treatment-panel"
+              id="scan-treatment-panel"
+              role="region"
+              aria-labelledby="scan-treatment-btn"
+              hidden
+            ></div>
+          </section>
+
+          <div class="tile-save-section">
+            <button type="button" class="tile-save-section__btn" id="tile-save-info-btn" disabled>
+              Save Info
+            </button>
+            <p class="tile-save-section__status" id="tile-save-status" hidden></p>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div
+      class="tile-delete-confirm"
+      id="tile-delete-confirm"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="tile-delete-confirm-title"
+      aria-describedby="tile-delete-confirm-message"
+      hidden
+    >
+      <div class="tile-delete-confirm__backdrop" data-cancel-tile-delete tabindex="-1"></div>
+      <div class="tile-delete-confirm__panel">
+        <h2 class="tile-delete-confirm__title" id="tile-delete-confirm-title">Delete this plant?</h2>
+        <p class="tile-delete-confirm__message" id="tile-delete-confirm-message"></p>
+        <div class="tile-delete-confirm__actions">
+          <button type="button" class="btn btn--ghost" data-cancel-tile-delete>Cancel</button>
+          <button type="button" class="btn btn--danger" id="tile-delete-confirm-ok">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="../js/TomatoValidator/roboflow-config.js"></script>
+    <script src="../js/DiseaseClassification/disease-classification-config.js"></script>
+    <script src="../js/DiseaseClassification/disease-classification.js"></script>
+    <script src="../js/Groq/groq-config.js"></script>
+    <script src="../js/Groq/groq-recommendations-client.js"></script>
+    <script src="../js/TomatoValidator/TomatoLeafValidation.js"></script>
+    <script type="module" src="../js/home-greeting.module.js"></script>
+    <script src="../js/storage-snapshot.js"></script>
+    <script src="../js/tile-plant-storage.js"></script>
+    <script src="../js/tile-plant-names.js"></script>
+    <script src="../js/tile-saved-archive.js"></script>
+    <script src="../js/scan-calendar.js"></script>
+    <script src="../js/farm-tile-emojis.js"></script>
+    <script src="../js/dashboard.js"></script>
+    <script src="../js/DiseaseClassification/disease-recommendations.js"></script>
+    <script src="../js/farm-notifications.js"></script>
+    <script src="../js/home-overview.js"></script>
+    <script src="../js/sidebar-toggle.js"></script>
+  </body>
+</html>

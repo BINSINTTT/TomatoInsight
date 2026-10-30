@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: tomato-insight-api
+    runtime: python
+    plan: free
+    rootDir: server
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 1 -b 0.0.0.0:$PORT --timeout 120 validation_api:app
+    envVars:
+      - key: ULTRALYTICS_VALIDATION_URL
+        sync: false
+      - key: ULTRALYTICS_VALIDATION_API_KEY
+        sync: false
+      - key: ULTRALYTICS_PREDICT_URL
+        sync: false
+      - key: ULTRALYTICS_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
