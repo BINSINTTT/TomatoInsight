@@ -63,7 +63,12 @@
       fromAccount.split(/\s+/).filter(Boolean).length > fromProfile.split(/\s+/).filter(Boolean).length
         ? fromAccount
         : fromProfile || fromAccount;
-    if (!name) return;
+    if (!name) {
+      nameEl.textContent = "Account";
+      nameEl.hidden = false;
+      if (link) link.setAttribute("aria-label", "Open profile");
+      return;
+    }
     nameEl.textContent = name;
     nameEl.hidden = false;
     if (link) link.setAttribute("aria-label", `Open profile for ${name}`);
@@ -76,6 +81,10 @@
   }
 
   window.addEventListener("tomatoInsight:userDataReady", (event) => {
+    const shouldRefresh = window.TomatoInsightUserData?.shouldRefreshUiForUserDataEvent?.(
+      event.detail
+    );
+    if (shouldRefresh === false) return;
     paintSidebarProfile(event.detail?.uid, event.detail?.displayName);
   });
   window.addEventListener("tomatoInsight:accountName", (event) => {

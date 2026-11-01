@@ -5,6 +5,8 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   sendPasswordResetEmail as firebaseSendPasswordResetEmail,
+  verifyPasswordResetCode as firebaseVerifyPasswordResetCode,
+  confirmPasswordReset as firebaseConfirmPasswordReset,
   updateProfile,
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-analytics.js";
@@ -17,6 +19,8 @@ function authErrorMessage(error) {
     "auth/email-already-in-use": "This email is already registered. Try logging in.",
     "auth/invalid-email": "Enter a valid email address.",
     "auth/weak-password": "Password is too weak. Follow the requirements below.",
+    "auth/password-does-not-meet-requirements":
+      "Password must be at least 8 characters and include uppercase, lowercase, and a special character.",
     "auth/user-not-found": "No account found for this email.",
     "auth/wrong-password": "Incorrect password.",
     "auth/invalid-credential": "Invalid email or password.",
@@ -25,6 +29,8 @@ function authErrorMessage(error) {
     "auth/missing-email": "Enter your email address.",
     "auth/unauthorized-continue-uri":
       "This app URL is not in Firebase Authorized domains. Add the host you use in the browser (e.g. 127.0.0.1 and localhost) under Authentication → Settings → Authorized domains.",
+    "auth/expired-action-code": "This reset link has expired. Request a new reset email.",
+    "auth/invalid-action-code": "This reset link is invalid or already used. Request a new reset email.",
   };
   return map[code] || error?.message || "Authentication failed. Please try again.";
 }
@@ -144,15 +150,19 @@ window.TomatoInsightAuth = {
     const trimmed = String(email || "").trim();
     if (!trimmed) return { ok: false, error: "Enter your email address." };
     try {
-      const continueUrl = new URL("login.html", window.location.href).href;
+      const resetPageUrl = new URL("reset-password.html", window.location.href).href;
+      const actionCodeSettings = {
+        url: resetPageUrl,
+        handleCodeInApp: true,
+      };
       try {
-        await firebaseSendPasswordResetEmail(auth, trimmed, { url: continueUrl });
+        await firebaseSendPasswordResetEmail(auth, trimmed, actionCodeSettings);
       } catch (err) {
         if (err?.code === "auth/unauthorized-continue-uri") {
           console.warn(
-            "[TomatoInsight] Password reset continue URL is not allowlisted:",
-            continueUrl,
-            "Sending email without custom redirect. Add this host in Firebase → Authentication → Authorized domains."
+            "[TomatoInsight] Password reset URL is not allowlisted:",
+            resetPageUrl,
+            "Sending email without custom handler. Add this host in Firebase → Authentication → Authorized domains."
           );
           await firebaseSendPasswordResetEmail(auth, trimmed);
         } else {
@@ -162,6 +172,32 @@ window.TomatoInsightAuth = {
       return { ok: true };
     } catch (err) {
       console.error("[TomatoInsight] sendPasswordResetEmail", err);
+      return { ok: false, error: authErrorMessage(err) };
+    }
+  },
+
+  async verifyPasswordResetCode(oobCode) {
+    if (!auth) return { ok: false, error: "Firebase is not configured." };
+    const code = String(oobCode || "").trim();
+    if (!code) return { ok: false, error: "Missing reset code." };
+    try {
+      const email = await firebaseVerifyPasswordResetCode(auth, code);
+      return { ok: true, email };
+    } catch (err) {
+      console.error("[TomatoInsight] verifyPasswordResetCode", err);
+      return { ok: false, error: authErrorMessage(err) };
+    }
+  },
+
+  async confirmPasswordReset(oobCode, newPassword) {
+    if (!auth) return { ok: false, error: "Firebase is not configured." };
+    const code = String(oobCode || "").trim();
+    if (!code) return { ok: false, error: "Missing reset code." };
+    try {
+      await firebaseConfirmPasswordReset(auth, code, newPassword);
+      return { ok: true };
+    } catch (err) {
+      console.error("[TomatoInsight] confirmPasswordReset", err);
       return { ok: false, error: authErrorMessage(err) };
     }
   },

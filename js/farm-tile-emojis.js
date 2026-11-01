@@ -1,9 +1,9 @@
 (function () {
   /** Paths from site root (Flask serves project/img/…). */
+  const tileIcon = "/img/tileIconLeaf.png";
   const happyEmoji = "/img/happyEmoji.png";
   const worryEmoji = "/img/worryEmoji.png";
   const sadEmoji = "/img/sadEmoji.png";
-  const defaultEmoji = "🌱";
 
   /**
    * @param {{ barKey: string, pct: number } | null | undefined} summary
@@ -33,10 +33,11 @@
   }
 
   window.TomatoInsightTileEmoji = {
+    tileIcon,
     happyEmoji,
     worryEmoji,
     sadEmoji,
-    defaultEmoji,
+    defaultEmoji: tileIcon,
     moodForSummary,
   };
 })();

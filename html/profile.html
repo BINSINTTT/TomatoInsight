@@ -18,7 +18,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Outfit:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../css/base.css" />
@@ -92,178 +92,140 @@
               <span class="sidebar__avatar-dot" aria-hidden="true"></span>
               <span class="sidebar__avatar-status" aria-hidden="true"></span>
             </span>
-            <span class="sidebar__avatar-name" hidden></span>
+            <span class="sidebar__avatar-name">Account</span>
           </a>
         </aside>
 
         <div class="content-frame content-frame--profile">
           <main class="main-panel main-panel--profile-layout">
-            <div class="profile-board">
+            <div class="profile-wrap" id="profile-wrap">
+              <div class="profile-load" id="profile-load" role="status" aria-live="polite" aria-busy="false">
+                <div class="profile-load__panel">
+                  <div class="profile-load__ring" aria-hidden="true"></div>
+                  <p class="profile-load__text">Loading your profile…</p>
+                </div>
+              </div>
               <header class="profile-top">
-                <h1 class="profile-top__title">Profile</h1>
+                <h1>Profile</h1>
                 <p class="profile-top__clock" id="profile-clock"></p>
               </header>
 
-              <div class="profile-grid">
-                <article class="profile-panel profile-identity" aria-label="Profile summary">
-                  <div class="profile-identity__main">
-                    <div class="profile-avatar-picker">
-                      <label class="profile-card__avatar" id="profile-avatar-btn" for="profile-photo-input" title="Choose a profile photo">
-                        <span id="profile-avatar-initials">—</span>
-                        <img id="profile-avatar-photo" alt="" hidden />
-                        <span class="profile-avatar-picker__badge" aria-hidden="true">
-                          <svg viewBox="0 0 24 24" width="14" height="14">
-                            <path fill="currentColor" d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM9 4l1.2-1.6h3.6L15 4h3a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3z" />
-                          </svg>
-                        </span>
+              <section class="profile-card profile-hero" aria-label="Account summary">
+                <div class="profile-hero__av" id="profile-setup-ring" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Farm setup progress">
+                  <label class="profile-hero__face" id="profile-avatar-btn" for="profile-photo-input" title="Choose a profile photo">
+                    <span id="profile-avatar-initials">—</span>
+                    <img id="profile-avatar-photo" alt="" hidden />
+                  </label>
+                  <label class="profile-hero__cam profile-avatar-picker__upload" for="profile-photo-input" aria-label="Upload photo">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 8h3l2-3h6l2 3h3v11H4z" />
+                      <circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="2" />
+                    </svg>
+                  </label>
+                  <input type="file" id="profile-photo-input" accept="image/*" hidden />
+                </div>
+                <div class="profile-hero__copy">
+                  <div class="profile-hero__name">
+                    <h2 id="profile-display-name">—</h2>
+                    <span class="profile-pill">Active</span>
+                  </div>
+                  <div class="profile-hero__meta">
+                    <span>Grower</span>
+                    <span><b id="profile-display-farm">Your farm</b></span>
+                    <span id="profile-display-email">—</span>
+                  </div>
+                  <button type="button" class="profile-hero__remove" id="profile-photo-remove" hidden>Remove photo</button>
+                  <p class="profile-photo-status" id="profile-photo-status" hidden></p>
+                </div>
+                <div class="profile-hero__stats">
+                  <div class="profile-stat"><b id="profile-stat-tiles">0</b><span>Tiles</span></div>
+                  <div class="profile-stat"><b id="profile-stat-scans">0</b><span>Scans</span></div>
+                  <div class="profile-stat"><b id="profile-stat-week">—</b><span>Week</span></div>
+                </div>
+                <div class="profile-hero__actions">
+                  <a class="profile-btn profile-btn--topup" href="plans.html">Top up credits</a>
+                  <a class="profile-btn profile-btn--primary" href="index.html">Open farm dashboard</a>
+                  <button type="button" class="profile-btn profile-btn--danger" id="profile-sign-out">Sign out</button>
+                </div>
+              </section>
+
+              <div class="profile-cols">
+                <div class="profile-stack">
+                  <section class="profile-card" aria-labelledby="profile-tasks-title">
+                    <div class="profile-card__head">
+                      <div>
+                        <h2 id="profile-tasks-title">Farm setup</h2>
+                        <p class="profile-card__sub" id="profile-tasks-sub">Finish these steps to start tracking plant health.</p>
+                        <p class="profile-credit-reminder" id="profile-credits-reminder" hidden>
+                          Finish all six farm setup steps (including a profile photo) for
+                          <strong>5 additional scan credits</strong>.
+                        </p>
+                      </div>
+                      <span class="profile-card__count" id="profile-tasks-progress">0 of 6 done</span>
+                    </div>
+                    <div class="profile-bar" id="profile-tasks-meter" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Setup progress">
+                      <i id="profile-tasks-bar"></i>
+                    </div>
+                    <ul class="profile-steps" id="profile-tasks"></ul>
+                  </section>
+
+                  <section class="profile-card" aria-labelledby="profile-details">
+                    <h2 id="profile-details">Your details</h2>
+                    <p class="profile-card__sub">Changes apply across your dashboard and reports.</p>
+                    <p class="profile-credit-reminder profile-credit-reminder--details" id="profile-details-credits-reminder" hidden>
+                      Farm setup must be fully complete (6 steps) to earn <strong>5 bonus scan credits</strong> (one time).
+                    </p>
+                    <form class="profile-form" id="profile-details-form">
+                      <div class="profile-form__row profile-form__row--three">
+                        <label>First name
+                          <input type="text" id="profile-first-name" name="firstName" autocomplete="given-name" required />
+                        </label>
+                        <label>M.I.
+                          <input type="text" id="profile-middle-initial" name="middleInitial" autocomplete="additional-name" maxlength="1" />
+                        </label>
+                        <label>Last name
+                          <input type="text" id="profile-last-name" name="lastName" autocomplete="family-name" required />
+                        </label>
+                      </div>
+                      <label>Farm name
+                        <input type="text" id="profile-farm-name" name="farmName" autocomplete="organization" placeholder="e.g. Green Valley Tomatoes" />
                       </label>
-                      <input type="file" id="profile-photo-input" accept="image/*" />
-                      <label class="profile-avatar-picker__upload" for="profile-photo-input">Upload photo</label>
-                      <button type="button" class="profile-avatar-picker__remove" id="profile-photo-remove" hidden>Remove</button>
-                      <p class="profile-photo-status" id="profile-photo-status" hidden></p>
-                    </div>
-                    <div class="profile-identity__copy">
-                      <div class="profile-identity__name-row">
-                        <h2 class="profile-card__name" id="profile-display-name">—</h2>
-                        <span class="profile-badge">Active</span>
+                      <label>Email <span class="profile-form__hint">Used to sign in. Can’t be changed here.</span>
+                        <input type="email" id="profile-email-readonly" readonly aria-readonly="true" tabindex="-1" />
+                      </label>
+                      <div class="profile-form__save">
+                        <p class="profile-form__alert profile-form__alert--error" id="profile-form-error" role="alert" hidden></p>
+                        <p class="profile-form__alert profile-form__alert--success" id="profile-form-success" role="status" hidden></p>
+                        <button type="submit" class="profile-btn profile-btn--accent" id="profile-save-btn">Update profile</button>
                       </div>
-                      <dl class="profile-identity__facts">
-                        <div>
-                          <dt>Role</dt>
-                          <dd>Grower</dd>
-                        </div>
-                        <div>
-                          <dt>Farm</dt>
-                          <dd id="profile-display-farm">Your farm</dd>
-                        </div>
-                        <div>
-                          <dt>Email</dt>
-                          <dd id="profile-display-email">—</dd>
-                        </div>
-                        <div>
-                          <dt>Tiles</dt>
-                          <dd id="profile-stat-tiles">0</dd>
-                        </div>
-                        <div>
-                          <dt>Scans</dt>
-                          <dd id="profile-stat-scans">0</dd>
-                        </div>
-                        <div>
-                          <dt>Week</dt>
-                          <dd id="profile-stat-week">—</dd>
-                        </div>
-                      </dl>
+                    </form>
+                  </section>
+                </div>
+
+                <div class="profile-stack">
+                  <section class="profile-card" aria-labelledby="profile-calendar-title">
+                    <div class="profile-cal__head">
+                      <button type="button" class="profile-cal__nav" id="profile-cal-prev" aria-label="Previous month">‹</button>
+                      <h2 id="profile-calendar-title">Calendar</h2>
+                      <button type="button" class="profile-cal__nav" id="profile-cal-next" aria-label="Next month">›</button>
                     </div>
-                  </div>
-                  <div class="profile-card__actions">
-                    <a class="profile-card__btn-outline" href="index.html">Open farm dashboard</a>
-                    <button type="button" class="profile-card__sign-out" id="profile-sign-out">Sign out</button>
-                  </div>
-                </article>
-
-                <article class="profile-panel profile-calendar" aria-labelledby="profile-calendar-title">
-                  <header class="profile-calendar__head">
-                    <button type="button" class="profile-calendar__nav" id="profile-cal-prev" aria-label="Previous month">‹</button>
-                    <h2 id="profile-calendar-title">Calendar</h2>
-                    <button type="button" class="profile-calendar__nav" id="profile-cal-next" aria-label="Next month">›</button>
-                  </header>
-                  <div class="profile-calendar__grid" id="profile-calendar"></div>
-                  <div class="profile-calendar__custom">
-                    <div class="profile-calendar__custom-actions">
-                      <button type="button" class="profile-calendar__custom-btn" id="profile-calendar-custom" aria-pressed="false">
-                        Custom dates
-                      </button>
-                      <button type="button" class="profile-calendar__reset-btn" id="profile-calendar-reset" hidden>
-                        Reset dates
-                      </button>
+                    <div class="profile-calendar__grid" id="profile-calendar"></div>
+                    <div class="profile-cal__toggle">
+                      <button type="button" class="profile-cal__switch" id="profile-calendar-custom" role="switch" aria-checked="false" aria-pressed="false" aria-label="Custom dates"></button>
+                      <span>Custom week dates</span>
+                      <button type="button" class="profile-step__link" id="profile-calendar-reset" hidden>Reset</button>
                     </div>
-                    <p class="profile-calendar__note" id="profile-calendar-note">Turn this on to pick the first scan day and the next week.</p>
-                  </div>
-                </article>
+                    <p class="profile-cal__note" id="profile-calendar-note">Turn this on to pick the first scan day and the next week.</p>
+                  </section>
 
-                <article class="profile-panel profile-events" aria-labelledby="profile-events-title">
-                  <header class="profile-events__head">
-                    <h2 id="profile-events-title">Farm activity</h2>
-                    <a class="profile-events__link" href="history.html">View all</a>
-                  </header>
-                  <div class="profile-events__list" id="profile-events"></div>
-                </article>
-
-                <section class="profile-details" aria-labelledby="profile-details">
-                  <h2 class="visually-hidden" id="profile-details">Account details</h2>
-                  <form class="profile-settings-form" id="profile-details-form">
-                    <p class="profile-settings-alert profile-settings-alert--error" id="profile-form-error" role="alert" hidden></p>
-                    <p class="profile-settings-alert profile-settings-alert--success" id="profile-form-success" role="status" hidden></p>
-
-                    <article class="profile-panel">
-                      <header class="profile-section__head">
-                        <h3>Basic information</h3>
-                        <span>Editable</span>
-                      </header>
-                      <div class="profile-settings-grid">
-                        <div class="profile-settings-field">
-                          <label for="profile-first-name">First name</label>
-                          <input class="profile-settings-control" type="text" id="profile-first-name" name="firstName" autocomplete="given-name" required />
-                        </div>
-                        <div class="profile-settings-field">
-                          <label for="profile-last-name">Last name</label>
-                          <input class="profile-settings-control" type="text" id="profile-last-name" name="lastName" autocomplete="family-name" required />
-                        </div>
-                        <div class="profile-settings-field">
-                          <label for="profile-middle-initial">Middle initial</label>
-                          <input class="profile-settings-control profile-settings-control--center" type="text" id="profile-middle-initial" name="middleInitial" autocomplete="additional-name" maxlength="1" />
-                        </div>
-                        <div class="profile-settings-field">
-                          <label for="profile-farm-name">Farm name</label>
-                          <input class="profile-settings-control" type="text" id="profile-farm-name" name="farmName" autocomplete="organization" placeholder="e.g. Green Valley Tomatoes" />
-                        </div>
-                      </div>
-                    </article>
-
-                    <article class="profile-panel">
-                      <header class="profile-section__head">
-                        <h3>Account</h3>
-                        <span>Not editable</span>
-                      </header>
-                      <div class="profile-settings-field">
-                        <label for="profile-email-readonly">Email address</label>
-                        <input class="profile-settings-control profile-settings-control--readonly" type="email" id="profile-email-readonly" readonly tabindex="-1" />
-                      </div>
-                    </article>
-
-                    <article class="profile-panel">
-                      <header class="profile-section__head">
-                        <h3>Farm snapshot</h3>
-                      </header>
-                      <div class="profile-chips">
-                        <div class="profile-chip">
-                          <span class="profile-chip__icon" aria-hidden="true">#</span>
-                          <span id="profile-chip-tiles">0 tiles</span>
-                        </div>
-                        <div class="profile-chip">
-                          <span class="profile-chip__icon profile-chip__icon--green" aria-hidden="true">✓</span>
-                          <span id="profile-chip-scans">0 scans</span>
-                        </div>
-                        <div class="profile-chip">
-                          <span class="profile-chip__icon profile-chip__icon--blue" aria-hidden="true">W</span>
-                          <span id="profile-chip-week">Week —</span>
-                        </div>
-                      </div>
-                    </article>
-
-                    <div class="profile-settings-footer">
-                      <button type="submit" class="profile-settings-btn" id="profile-save-btn">Update</button>
+                  <section class="profile-card" aria-labelledby="profile-events-title">
+                    <div class="profile-card__head">
+                      <h2 id="profile-events-title">Farm activity</h2>
+                      <a class="profile-step__link" href="history.html">View all</a>
                     </div>
-                  </form>
-                </section>
-
-                <article class="profile-panel profile-tasks" aria-labelledby="profile-tasks-title">
-                  <header class="profile-tasks__head">
-                    <h2 id="profile-tasks-title">Farm setup</h2>
-                    <p id="profile-tasks-progress">0/5 completed</p>
-                  </header>
-                  <ul class="profile-tasks__list" id="profile-tasks"></ul>
-                </article>
+                    <div id="profile-events"></div>
+                  </section>
+                </div>
               </div>
             </div>
           </main>

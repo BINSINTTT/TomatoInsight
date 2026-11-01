@@ -33,7 +33,11 @@ function initHomeGreeting() {
     if (user) refreshHomeGreeting(user);
   });
 
-  window.addEventListener("tomatoInsight:userDataReady", () => {
+  window.addEventListener("tomatoInsight:userDataReady", (event) => {
+    const shouldRefresh = window.TomatoInsightUserData?.shouldRefreshUiForUserDataEvent?.(
+      event.detail
+    );
+    if (shouldRefresh === false) return;
     const user = auth.currentUser;
     if (user) refreshHomeGreeting(user);
   });

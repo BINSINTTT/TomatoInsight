@@ -153,6 +153,7 @@
   function finishLoading(token) {
     if (token != null && token !== loadingToken) return;
     applyLoading(false);
+    window.TomatoInsightScan?.endPipeline?.();
   }
 
   function dismissAlert() {
@@ -262,9 +263,13 @@
     }
   }
 
+  function isCurrentRequest(requestId) {
+    return requestId == null || requestId === activeRequest;
+  }
+
   function startClassification(file, loadToken) {
     if (!window.TomatoInsightDisease?.classifyImageFile) return false;
-    window.TomatoInsightDisease.classifyImageFile(file, loadToken);
+    window.TomatoInsightDisease.classifyImageFile(file, loadToken, activeRequest);
     return true;
   }
 
@@ -280,6 +285,8 @@
   window.TomatoInsightValidation = {
     validateImageFile,
     dismissAlert,
+    showNotice: showAlert,
+    isCurrentRequest,
     resetUI,
     finishLoading,
   };

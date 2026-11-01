@@ -85,11 +85,8 @@ function firstNonEmpty(...values) {
   return "";
 }
 
-export async function loadUserProfile(uid, authUser) {
+function mergeProfileForUser(uid, authUser) {
   const fromSignUpDisplayName = parseDisplayName(authUser?.displayName);
-
-  await window.TomatoInsightUserData?.whenReady?.();
-
   const local = readLocalProfile(uid);
   return normalizeProfile({
     firstName: firstNonEmpty(local?.firstName, fromSignUpDisplayName.firstName),
@@ -99,6 +96,30 @@ export async function loadUserProfile(uid, authUser) {
     email: firstNonEmpty(local?.email, authUser?.email),
     photo: local?.photo || "",
   });
+}
+
+/** Synchronous read from local storage — safe before Firestore hydrate finishes. */
+export function loadUserProfileFromCache(uid, authUser) {
+  if (!uid || !authUser) return null;
+  return mergeProfileForUser(uid, authUser);
+}
+
+export function profileHasDisplayableData(profile) {
+  if (!profile) return false;
+  return Boolean(
+    profile.firstName ||
+    profile.lastName ||
+    profile.farmName ||
+    profile.photo ||
+    profile.email
+  );
+}
+
+export async function loadUserProfile(uid, authUser, options = {}) {
+  if (!options.skipWhenReady) {
+    await window.TomatoInsightUserData?.whenReady?.();
+  }
+  return mergeProfileForUser(uid, authUser);
 }
 
 export async function saveUserProfile(uid, profile, options = {}) {

@@ -58,7 +58,8 @@
       const latest = weeks[weeks.length - 1];
       const latestWeek = latest?.week ?? Number(tile.info.weekNumber);
       const savedAt = latest?.scan?.savedAt || tile.info.savedAt;
-      const nextWeek = calendar.reminderWeekForPlant(savedAt, latestWeek);
+      const scanDayIso = latest?.scan?.scanDayIso || tile.info.scanDayIso || "";
+      const nextWeek = calendar.reminderWeekForPlant(savedAt, latestWeek, scanDayIso);
       if (!Number.isFinite(nextWeek) || nextWeek > archive.FARM_WEEK_LAST) return [];
       const savedWeeks = new Set(weeks.map((item) => item.week));
       if (savedWeeks.has(nextWeek)) return [];
@@ -179,7 +180,13 @@
 
   refresh();
   setInterval(refresh, 5000);
-  window.addEventListener("tomatoInsight:userDataReady", refresh);
+  window.addEventListener("tomatoInsight:userDataReady", (event) => {
+    const shouldRefresh = window.TomatoInsightUserData?.shouldRefreshUiForUserDataEvent?.(
+      event.detail
+    );
+    if (shouldRefresh === false) return;
+    refresh();
+  });
   window.addEventListener("tomatoInsight:scanCalendar", refresh);
   window.addEventListener("focus", refresh);
 })();

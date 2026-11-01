@@ -192,8 +192,11 @@
     }
   }
 
-  async function classifyImageFile(file, loadToken) {
+  async function classifyImageFile(file, loadToken, requestId) {
     const stopLoading = () => window.TomatoInsightValidation?.finishLoading?.(loadToken);
+    const stillCurrent = () =>
+      !window.TomatoInsightValidation?.isCurrentRequest ||
+      window.TomatoInsightValidation.isCurrentRequest(requestId);
 
     if (!file?.type?.startsWith("image/")) {
       stopLoading();
@@ -234,6 +237,18 @@
       }
 
       const scores = mapToBarScores(predictions);
+      const totalScore = Object.values(scores).reduce((sum, value) => sum + (Number(value) || 0), 0);
+      if (totalScore <= 0) {
+        showClassificationMessage(
+          "Classification failed",
+          "The model returned no scores. This scan was not charged.",
+          "warning"
+        );
+        return { ok: false, error: "empty_predictions", raw: result };
+      }
+
+      if (!stillCurrent()) return { ok: false, cancelled: true };
+
       console.log("[TomatoInsight] Bar scores:", scores);
       window.TomatoInsightScan?.setClassificationScores?.(scores);
       await new Promise((resolve) => setTimeout(resolve, 480));

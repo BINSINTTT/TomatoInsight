@@ -3,6 +3,7 @@
  *
  *   users/{uid}
  *     firstName, middleInitial, lastName, farmName, email, photo, updatedAt
+ *     credits: { balance, signupGranted, profileBonusGranted, updatedAt }
  *     layout: { rows, columns, updatedAt }
  *     selectedFarmWeek
  *     plantNames: { "1": { name, diseaseLabel: [names], diseases: [{ name, pct }], recommendation }, ... }
@@ -42,6 +43,7 @@ const LOCAL = {
 const FARM_WEEK_FIRST = 4;
 const FARM_WEEK_LAST = 12;
 const TILE_DOC_LIMIT = 900000;
+const HYDRATE_SESSION_KEY = "tomatoInsight.hydratedSession";
 
 let activeUid = null;
 let hydratePromise = Promise.resolve();
@@ -209,6 +211,50 @@ function captureLocalFarm() {
     tiles: readJson(LOCAL.tiles, {}),
     selectedFarmWeek: readLocalFarmWeek(),
   };
+}
+
+function markHydrateSession(uid) {
+  if (!uid) return;
+  try {
+    sessionStorage.setItem(HYDRATE_SESSION_KEY, JSON.stringify({ uid, at: Date.now() }));
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearHydrateSession() {
+  try {
+    sessionStorage.removeItem(HYDRATE_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** True when this browser already has farm/profile data for the user (skip blocking hydrate). */
+function hasLocalUserBundle(uid) {
+  const profile = readLocalProfile(uid);
+  if (profile?.firstName || profile?.lastName || profile?.farmName || profile?.photo) return true;
+  const farm = captureLocalFarm();
+  if (layoutValid(farm.layout)) return true;
+  if (Object.keys(farm.plantNames || {}).length) return true;
+  if (Object.keys(farm.tiles || {}).length) return true;
+  if (readLocalDeletions().length) return true;
+  return false;
+}
+
+function dispatchUserDataReady(uid, displayName, extra = {}) {
+  window.dispatchEvent(
+    new CustomEvent("tomatoInsight:userDataReady", {
+      detail: { uid, displayName: displayName || "", ...extra },
+    })
+  );
+}
+
+export function shouldRefreshUiForUserDataEvent(detail) {
+  const d = detail || {};
+  if (d.fromCache) return false;
+  if (d.background && !d.changed) return false;
+  return true;
 }
 
 function layoutValid(layout) {
@@ -532,24 +578,56 @@ function farmFromDoc(data, tiles) {
   };
 }
 
+function tileSavedAtMs(info) {
+  if (!info || typeof info !== "object") return 0;
+  const raw = info.savedAt || info.updatedAt || "";
+  const ms = Date.parse(String(raw));
+  return Number.isNaN(ms) ? 0 : ms;
+}
+
+/** Prefer newer saved scans; never drop local-only tiles that already have a save. */
+function mergeTileRecords(localTiles, remoteTiles) {
+  const local = localTiles && typeof localTiles === "object" ? localTiles : {};
+  const remote = remoteTiles && typeof remoteTiles === "object" ? remoteTiles : {};
+  const ids = new Set([...Object.keys(local), ...Object.keys(remote)]);
+  const merged = {};
+  ids.forEach((id) => {
+    const left = local[id];
+    const right = remote[id];
+    if (left && right) {
+      merged[id] = tileSavedAtMs(left) >= tileSavedAtMs(right) ? left : right;
+      return;
+    }
+    if (left) {
+      merged[id] = left;
+      return;
+    }
+    if (right) merged[id] = right;
+  });
+  return merged;
+}
+
 function applyFarmToLocal(farm, deletions) {
+  const localTiles = readJson(LOCAL.tiles, {});
+  const mergedTiles = mergeTileRecords(localTiles, farm.tiles);
+
   if (layoutValid(farm.layout)) {
     writeJson(LOCAL.layout, layoutRecord(farm.layout));
-  } else {
+  } else if (!Object.keys(mergedTiles).length) {
     localStorage.removeItem(LOCAL.layout);
   }
 
   if (farm.plantNames && typeof farm.plantNames === "object") {
-    writeJson(LOCAL.plantNames, namesForLocal(farm.plantNames, farm.tiles, deletions));
-    writeJson(LOCAL.recommendations, recommendationsForLocal(farm.plantNames, farm.tiles));
-  } else {
+    writeJson(LOCAL.plantNames, namesForLocal(farm.plantNames, mergedTiles, deletions));
+    writeJson(LOCAL.recommendations, recommendationsForLocal(farm.plantNames, mergedTiles));
+  } else if (!Object.keys(mergedTiles).length) {
     localStorage.removeItem(LOCAL.plantNames);
     localStorage.removeItem(LOCAL.recommendations);
   }
 
-  if (farm.tiles && typeof farm.tiles === "object") {
-    writeJson(LOCAL.tiles, farm.tiles);
-  } else {
+  if (Object.keys(mergedTiles).length) {
+    writeJson(LOCAL.tiles, mergedTiles);
+  } else if (!Object.keys(localTiles).length) {
     localStorage.removeItem(LOCAL.tiles);
   }
 
@@ -574,11 +652,10 @@ function applyCloudBundle(uid, bundle, { notify } = {}) {
     writeJson(LOCAL.scanCalendar, bundle.user.scanCalendar);
   }
   if (notify) {
-    window.dispatchEvent(
-      new CustomEvent("tomatoInsight:userDataReady", {
-        detail: { uid: activeUid, live: true, displayName: window.__tomatoInsightAccountName || "" },
-      })
-    );
+    dispatchUserDataReady(activeUid, window.__tomatoInsightAccountName || "", {
+      live: true,
+      changed: true,
+    });
   }
   return true;
 }
@@ -724,7 +801,7 @@ export async function hydrateUserFromRtdb(uid, email) {
   const remote = await readCloudBundle(uid);
 
   if (hasCloudData(remote)) {
-    applyCloudBundle(uid, remote);
+    const changed = applyCloudBundle(uid, remote);
     const local = readLocalProfile(uid) || {};
     const remoteName = remote.user?.firstName || remote.user?.lastName || remote.user?.farmName;
     if ((local.firstName || local.lastName || local.farmName) && !remoteName) {
@@ -737,7 +814,7 @@ export async function hydrateUserFromRtdb(uid, email) {
     } catch (err) {
       logCloudFailure("syncPlantNames", err);
     }
-    return { ok: true, source: "remote" };
+    return { ok: true, source: "remote", changed: Boolean(changed) };
   }
 
   const localFarm = captureLocalFarm();
@@ -752,8 +829,8 @@ export async function hydrateUserFromRtdb(uid, email) {
 
   if (hasLocal) {
     const uploaded = await uploadLocalBundle(uid, email);
-    applyCloudBundle(uid, uploaded);
-    return { ok: true, source: "migrated-local" };
+    const changed = applyCloudBundle(uid, uploaded);
+    return { ok: true, source: "migrated-local", changed: Boolean(changed) };
   }
 
   await bootstrapUserInRtdb(uid, email, localProfile);
@@ -871,7 +948,7 @@ function watchUserFarm(uid) {
   const seen = { user: false, tiles: false, deletions: false };
   const apply = () => {
     if (activeUid !== uid || !seen.user || !seen.tiles || !seen.deletions) return;
-    applyCloudBundle(uid, state, { notify: true });
+    applyCloudBundle(uid, state, { notify: false });
   };
   const unsubUser = onSnapshot(
     userRef(uid),
@@ -973,7 +1050,52 @@ function registerGlobalBridge() {
     whenReady() {
       return hydratePromise;
     },
+    shouldRefreshUiForUserDataEvent(detail) {
+      return shouldRefreshUiForUserDataEvent(detail);
+    },
   };
+}
+
+function afterHydrate(uid, displayName, result) {
+  if (result?.ok !== false) markHydrateSession(uid);
+  if (activeUid === uid) watchUserFarm(uid);
+  return result;
+}
+
+function runBlockingHydrate(uid, email, displayName) {
+  return hydrateUserFromRtdb(uid, email)
+    .catch((err) => {
+      logCloudFailure("hydrate", err);
+      return { ok: false, reason: err?.code || "hydrate-failed", error: err };
+    })
+    .then((result) => {
+      afterHydrate(uid, displayName, result);
+      dispatchUserDataReady(uid, displayName, {
+        background: false,
+        changed: Boolean(result?.changed),
+      });
+      return result;
+    });
+}
+
+function runBackgroundHydrate(uid, email, displayName) {
+  return flushLocalFarmToRtdb(uid)
+    .catch((err) => {
+      logCloudFailure("flush-before-hydrate", err);
+    })
+    .then(() => hydrateUserFromRtdb(uid, email))
+    .catch((err) => {
+      logCloudFailure("hydrate", err);
+      return { ok: false, reason: err?.code || "hydrate-failed", error: err };
+    })
+    .then((result) => {
+      afterHydrate(uid, displayName, result);
+      dispatchUserDataReady(uid, displayName, {
+        background: true,
+        changed: Boolean(result?.changed),
+      });
+      return result;
+    });
 }
 
 export function bindUserDataSync(auth) {
@@ -984,24 +1106,24 @@ export function bindUserDataSync(auth) {
     if (user) {
       window.__tomatoInsightAccountName = user.displayName || "";
       const uid = user.uid;
-      hydratePromise = hydrateUserFromRtdb(uid, user.email)
-        .catch((err) => {
-          logCloudFailure("hydrate", err);
-          return { ok: false, reason: err?.code || "hydrate-failed", error: err };
-        })
-        .then((result) => {
-          if (activeUid === uid) watchUserFarm(uid);
-          window.dispatchEvent(
-            new CustomEvent("tomatoInsight:userDataReady", {
-              detail: { uid, displayName: user.displayName || "" },
-            })
-          );
-          return result;
-        });
+      const displayName = user.displayName || "";
+      activeUid = uid;
+
+      if (hasLocalUserBundle(uid)) {
+        hydratePromise = Promise.resolve({ ok: true, source: "local-cache" });
+        const announce = () => dispatchUserDataReady(uid, displayName, { fromCache: true });
+        if (typeof queueMicrotask === "function") queueMicrotask(announce);
+        else window.setTimeout(announce, 0);
+        void runBackgroundHydrate(uid, user.email, displayName);
+        return;
+      }
+
+      hydratePromise = runBlockingHydrate(uid, user.email, displayName);
       return;
     }
 
     hydratePromise = Promise.resolve();
+    clearHydrateSession();
     const uid = activeUid || resolveSyncUid();
     const pending = uid ? flushLocalFarmToRtdb(uid) : Promise.resolve();
     clearLocalUserFarmData();

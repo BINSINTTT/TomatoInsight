@@ -83,6 +83,24 @@
     if (tone === "worse") changeValue?.classList.add("monitor-stat__value--bad");
   }
 
+  function chartTone(key) {
+    if (key === "early_blight") return "blight";
+    if (key === "spotted_wilt") return "wilt";
+    return key;
+  }
+
+  function chartBar(pct, tone, phase, weekLabel) {
+    const height = Math.max(pct, pct > 0 ? 4 : 0);
+    const tip = pct > 0 ? `<span class="monitor-chart__tip">${archive.fmtPct(pct)}%</span>` : "";
+    return (
+      `<span class="monitor-chart__bar monitor-chart__bar--${tone} monitor-chart__bar--${phase}" ` +
+      `style="--bar-h:${height}%" role="img" ` +
+      `aria-label="${weekLabel} ${archive.fmtPct(pct)} percent for ${tone}">` +
+      tip +
+      `</span>`
+    );
+  }
+
   function renderChart(pair) {
     if (!chartEl) return;
     const past = pair?.past;
@@ -99,33 +117,49 @@
     }
 
     chartEl.classList.remove("monitor-chart--empty");
-    chartEl.innerHTML = SCORE_KEYS.map(({ key, label }) => {
+    const yAxis =
+      `<div class="monitor-chart__y-axis" aria-hidden="true">` +
+      `<span>100</span><span>75</span><span>50</span><span>25</span><span>0</span>` +
+      `</div>`;
+    const grid =
+      `<div class="monitor-chart__grid" aria-hidden="true">` +
+      `<span></span><span></span><span></span><span></span><span></span>` +
+      `</div>`;
+    const columns = SCORE_KEYS.map(({ key, label }) => {
+      const tone = chartTone(key);
       const pastPct = past ? scoreOf(past, key) : 0;
       const currentPct = current ? scoreOf(current, key) : 0;
-      const pastBar = past
-        ? `<span class="monitor-chart__bar" style="height:${Math.max(pastPct, 2)}%" title="Week ${pastWeek} ${archive.fmtPct(pastPct)}%"></span>`
-        : "";
-      const currentBar = current
-        ? `<span class="monitor-chart__bar monitor-chart__bar--current" style="height:${Math.max(currentPct, 2)}%" title="Week ${currentWeek} ${archive.fmtPct(currentPct)}%"></span>`
-        : "";
+      const pastBar = past ? chartBar(pastPct, tone, "past", `Week ${pastWeek}`) : "";
+      const currentBar = current ? chartBar(currentPct, tone, "current", `Week ${currentWeek}`) : "";
       return (
         `<div class="monitor-chart__group">` +
         `<div class="monitor-chart__bars">` +
         pastBar +
         currentBar +
         `</div>` +
-        `<span class="monitor-chart__label">${label}</span>` +
+        `<span class="monitor-chart__label monitor-chart__label--${tone}">${label}</span>` +
         `</div>`
       );
     }).join("");
+
+    chartEl.innerHTML =
+      `<div class="monitor-chart__inner">` +
+      yAxis +
+      `<div class="monitor-chart__plot">` +
+      grid +
+      `<div class="monitor-chart__columns">${columns}</div>` +
+      `</div>` +
+      `</div>`;
 
     if (legendEl) {
       legendEl.hidden = false;
       if (past && current) {
         legendEl.innerHTML =
-          `<span><i></i>Week ${pastWeek}</span><span><i class="monitor-legend__current"></i>Week ${currentWeek}</span>`;
+          `<span><i class="monitor-legend__swatch monitor-legend__swatch--past"></i>Week ${pastWeek} (previous)</span>` +
+          `<span><i class="monitor-legend__swatch monitor-legend__swatch--current"></i>Week ${currentWeek} (chosen)</span>`;
       } else {
-        legendEl.innerHTML = `<span><i></i>Week ${currentWeek || pastWeek}</span>`;
+        legendEl.innerHTML =
+          `<span><i class="monitor-legend__swatch monitor-legend__swatch--current"></i>Week ${currentWeek || pastWeek}</span>`;
       }
     }
 

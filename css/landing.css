@@ -133,9 +133,10 @@
 /* ---------- Hero leaf flashcards ---------- */
 .landing-page .ti-flashcards {
   position: relative;
-  width: min(100%, 24rem);
+  width: min(100%, 34rem);
   margin-left: auto;
-  padding: 0 1.75rem 1.5rem 0;
+  margin-right: auto;
+  padding: 0 0.5rem 1.5rem;
 }
 
 .landing-page .ti-flashcards__stage {
@@ -340,59 +341,14 @@
   font-weight: 600;
 }
 
-/* Keep both labels in the open space beside the deck, above the photos. */
-.landing-page .float-card {
-  z-index: 6;
-}
-
-.landing-page .float-card .fc-val,
-.landing-page .float-card .fc-label {
-  white-space: nowrap;
-}
-
 @media (min-width: 992px) {
   .landing-page .hero-media {
     overflow: visible;
   }
 
-  .landing-page .float-card-1 {
-    top: 16%;
-    left: 0;
-    right: auto;
-  }
-
   .landing-page .hero-media .ti-flashcards {
-    margin-bottom: 5.5rem;
-  }
-
-  .landing-page .float-card-2 {
-    top: auto;
-    bottom: 0;
-    left: auto;
-    right: 0;
-  }
-}
-
-/* Below lg the theme stretches both cards across the mock — stack them under it. */
-@media (max-width: 991.98px) {
-  .landing-page .hero-media {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .landing-page .float-card-1,
-  .landing-page .float-card-2 {
-    position: static;
-    inset: auto;
-    animation: none;
-    background: var(--clr-surface);
-    border-color: rgba(15, 23, 42, 0.08);
-    box-shadow: var(--shadow-soft);
-  }
-
-  .landing-page .float-card-2 {
-    align-self: flex-end;
+    margin-right: 0;
+    margin-left: auto;
   }
 }
 
@@ -575,69 +531,353 @@
   color: var(--clr-primary);
 }
 
-/* ---------- Disease cards ---------- */
+/* ---------- Feature cards (“Explore” gradient cards, reference layout) ---------- */
+.landing-page .ti-feature-grid {
+  align-items: stretch;
+}
+
+.landing-page .ti-feature-grid > [class*="col-"] {
+  display: flex;
+}
+
+.landing-page .ti-feature-card {
+  --ti-feature-accent: #3b82f6;
+  --ti-feature-accent-deep: #1d4ed8;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100%;
+  border-radius: 1.75rem;
+  overflow: hidden;
+  background: linear-gradient(
+    165deg,
+    #e6f0ff 0%,
+    #ffffff 42%,
+    #eef4ff 100%
+  );
+  box-shadow: 0 14px 36px rgba(26, 32, 44, 0.06);
+  transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease);
+}
+
+.landing-page .ti-feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 48px rgba(26, 32, 44, 0.1);
+}
+
+.landing-page .ti-feature-card__visual {
+  position: relative;
+  flex: 0 0 clamp(9.5rem, 28vw, 11.5rem);
+  overflow: hidden;
+}
+
+.landing-page .ti-feature-card__art {
+  position: absolute;
+  inset: -15% -10% 0;
+  pointer-events: none;
+}
+
+.landing-page .ti-feature-card__art::before {
+  content: "";
+  position: absolute;
+  width: 78%;
+  height: 88%;
+  top: 8%;
+  right: -8%;
+  border-radius: 58% 42% 55% 45% / 48% 52% 48% 52%;
+  background:
+    radial-gradient(circle at 32% 28%, #ffffff 0%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 55% 62%, var(--ti-feature-accent) 0%, var(--ti-feature-accent-deep) 68%, transparent 72%);
+  filter: drop-shadow(0 18px 28px rgba(29, 78, 216, 0.22));
+  mix-blend-mode: multiply;
+  opacity: 0.92;
+}
+
+.landing-page .ti-feature-card__art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 18% 72%, rgba(15, 23, 42, 0.12) 0 1px, transparent 2px),
+    radial-gradient(circle at 42% 18%, rgba(15, 23, 42, 0.1) 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 38%, rgba(15, 23, 42, 0.08) 0 1px, transparent 2px);
+  background-size: 100% 100%;
+  opacity: 0.55;
+}
+
+.landing-page .ti-feature-card--blueprint {
+  --ti-feature-accent: #2563eb;
+  --ti-feature-accent-deep: #1e40af;
+}
+
+.landing-page .ti-feature-card--scan {
+  --ti-feature-accent: #0ea5e9;
+  --ti-feature-accent-deep: #0369a1;
+}
+
+.landing-page .ti-feature-card--classify {
+  --ti-feature-accent: #6366f1;
+  --ti-feature-accent-deep: #4338ca;
+}
+
+.landing-page .ti-feature-card--care {
+  --ti-feature-accent: #22c55e;
+  --ti-feature-accent-deep: #15803d;
+}
+
+.landing-page .ti-feature-card--history {
+  --ti-feature-accent: #38bdf8;
+  --ti-feature-accent-deep: #0284c7;
+}
+
+.landing-page .ti-feature-card--private {
+  --ti-feature-accent: #64748b;
+  --ti-feature-accent-deep: #334155;
+}
+
+.landing-page .ti-feature-card__content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0 2rem 2.25rem;
+  margin-top: -0.35rem;
+}
+
+.landing-page .ti-feature-card__title {
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.15rem, 2vw, 1.35rem);
+  font-weight: 700;
+  line-height: 1.25;
+  color: #1a202c;
+}
+
+.landing-page .ti-feature-card__desc {
+  margin: 0;
+  flex: 1;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #718096;
+}
+
+.landing-page .ti-feature-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 1.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a202c;
+  text-decoration: none;
+  transition: gap 0.25s var(--ease), color 0.25s var(--ease);
+}
+
+.landing-page .ti-feature-card__link i {
+  font-size: 1rem;
+  transition: transform 0.25s var(--ease);
+}
+
+.landing-page .ti-feature-card__link:hover {
+  color: var(--clr-primary-dark);
+  gap: 0.55rem;
+}
+
+.landing-page .ti-feature-card__link:hover i {
+  transform: translateX(3px);
+}
+
+@media (max-width: 575.98px) {
+  .landing-page .ti-feature-card {
+    border-radius: 1.35rem;
+  }
+
+  .landing-page .ti-feature-card__content {
+    padding: 0 1.35rem 1.65rem;
+  }
+}
+
+/* ---------- Disease cards (full-bleed photo + bottom panel, villa-style) ---------- */
+.landing-page .ti-disease-grid {
+  align-items: stretch;
+}
+
+.landing-page .ti-disease-grid > [class*="col-"] {
+  display: flex;
+}
+
 .landing-page .ti-disease-card {
   position: relative;
-  height: 100%;
-  padding: 26px 24px 24px;
-  background: var(--clr-surface);
-  border: 1px solid rgba(15, 23, 42, 0.07);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 100%;
+  min-height: clamp(22rem, 44vw, 27rem);
+  border-radius: 2.5rem;
   overflow: hidden;
-  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
+  background: var(--ti-card-bg, #2f351d);
+  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.12);
+  transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease);
 }
 
 .landing-page .ti-disease-card:hover {
   transform: translateY(-6px);
-  box-shadow: var(--shadow-lift);
+  box-shadow: 0 26px 52px rgba(15, 23, 42, 0.18);
 }
 
-/* Colour strip and dot are driven by --ti-card, set per variant below. */
-.landing-page .ti-disease-card::before {
-  content: "";
+.landing-page .ti-disease-card__media {
   position: absolute;
-  inset: 0 0 auto;
-  height: 5px;
-  background: var(--ti-card);
+  inset: 0;
+  pointer-events: none;
 }
 
 .landing-page .ti-disease-card__photo {
   display: block;
   width: 100%;
-  height: 9.5rem;
-  margin-bottom: 16px;
-  object-fit: contain;
-  border-radius: 0.85rem;
-  background: #111;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+  transform: scale(1.03);
+  transition: transform 0.45s var(--ease);
 }
 
-.landing-page .ti-disease-card__aka {
-  margin-bottom: 10px;
-  font-size: 0.78rem;
+.landing-page .ti-disease-card:hover .ti-disease-card__photo {
+  transform: scale(1.07);
+}
+
+.landing-page .ti-disease-card__shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.02) 0%,
+    rgba(0, 0, 0, 0.06) 34%,
+    rgba(0, 0, 0, 0.35) 52%,
+    var(--ti-card-bg) 72%,
+    var(--ti-card-bg) 100%
+  );
+}
+
+.landing-page .ti-disease-card__content {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  padding: 1.2rem 1.3rem 1.35rem;
+  color: #fff;
+}
+
+.landing-page .ti-disease-card__title {
+  margin: 0 0 0.45rem;
+  font-size: clamp(1.2rem, 2.1vw, 1.45rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: #f2f2f2;
+}
+
+.landing-page .ti-disease-card__desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.82);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.landing-page .ti-disease-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.9rem;
+}
+
+.landing-page .ti-disease-card__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.42);
+  font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: var(--ti-card-text);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.landing-page .ti-disease-card__badge i {
+  font-size: 0.78rem;
+  opacity: 0.92;
+}
+
+.landing-page .ti-disease-card__badge--rating {
+  gap: 0.45rem;
+}
+
+.landing-page .ti-disease-card__rating-label {
+  font-weight: 700;
+}
+
+.landing-page .ti-disease-card__stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.05rem;
+  font-size: 0.55rem;
+  line-height: 1;
+  color: #fff;
+}
+
+.landing-page .ti-disease-card__btn {
+  display: block;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.82rem 1.15rem;
+  border-radius: 999px;
+  border: none;
+  background: #fff;
+  color: #111;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+.landing-page .ti-disease-card__btn:hover {
+  color: #000;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
 }
 
 .landing-page .ti-disease-card--healthy {
-  --ti-card: linear-gradient(135deg, var(--ti-healthy), var(--ti-healthy-end));
-  --ti-card-text: var(--ti-healthy-end);
+  --ti-card-bg: #234228;
 }
 
 .landing-page .ti-disease-card--tlcv {
-  --ti-card: linear-gradient(135deg, var(--ti-tlcv), var(--ti-tlcv-end));
-  --ti-card-text: var(--ti-tlcv-end);
+  --ti-card-bg: #4a3418;
 }
 
 .landing-page .ti-disease-card--blight {
-  --ti-card: linear-gradient(135deg, var(--ti-blight), var(--ti-blight-end));
-  --ti-card-text: var(--ti-blight-end);
+  --ti-card-bg: #3d1c1a;
 }
 
 .landing-page .ti-disease-card--wilt {
-  --ti-card: linear-gradient(135deg, var(--ti-wilt), var(--ti-wilt-end));
-  --ti-card-text: var(--ti-wilt-end);
+  --ti-card-bg: #2f2438;
+}
+
+@media (min-width: 992px) {
+  .landing-page .ti-disease-card {
+    min-height: 25.5rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .landing-page .ti-disease-card {
+    min-height: 23rem;
+    border-radius: 2rem;
+  }
 }
 
 /* ---------- Advisory note ---------- */

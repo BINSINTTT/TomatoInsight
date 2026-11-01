@@ -1,0 +1,172 @@
+/* Shared scan-credit plan cards (home modal + plans page). */
+
+.out-of-credit-plans,
+.credit-plans-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.out-of-credit-plan,
+.credit-plan {
+  position: relative;
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(36, 48, 70, 0.1);
+  background: var(--surface-muted, #f5f5f4);
+}
+
+.out-of-credit-plan--featured,
+.credit-plan--featured {
+  border-color: rgba(229, 57, 53, 0.35);
+  background: linear-gradient(165deg, #fff6f5 0%, #ffffff 55%);
+  box-shadow: 0 10px 28px rgba(229, 57, 53, 0.1);
+}
+
+.out-of-credit-plan__badge,
+.credit-plan__badge {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(135deg, #e53935, #b71c1c);
+}
+
+.out-of-credit-plan__head,
+.credit-plan__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-right: 4.5rem;
+}
+
+.out-of-credit-plan--featured .out-of-credit-plan__head,
+.credit-plan--featured .credit-plan__head {
+  padding-right: 5.25rem;
+}
+
+.out-of-credit-plan__name,
+.credit-plan__name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary, #222);
+}
+
+.out-of-credit-plan__credits,
+.credit-plan__credits {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary, #757575);
+}
+
+.out-of-credit-plan__price,
+.credit-plan__price {
+  margin: 0;
+}
+
+.out-of-credit-plan__amount,
+.credit-plan__amount {
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #222);
+}
+
+.out-of-credit-plan__note,
+.credit-plan__note {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #757575);
+}
+
+.out-of-credit-plan__btn,
+.credit-plan__btn {
+  margin-top: 0.35rem;
+  width: 100%;
+  border: 1px solid rgba(36, 48, 70, 0.12);
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary, #757575);
+  background: #fff;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.out-of-credit-plan__btn:hover:not(:disabled),
+.credit-plan__btn:hover:not(:disabled) {
+  filter: brightness(0.98);
+  transform: translateY(-1px);
+}
+
+.out-of-credit-plan__btn:disabled,
+.credit-plan__btn:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.out-of-credit-plan__btn--primary,
+.credit-plan__btn--primary {
+  border: none;
+  color: #fff;
+  background: linear-gradient(135deg, #e53935, #c62828);
+}
+
+.out-of-credit-plan__btn--primary:hover:not(:disabled),
+.credit-plan__btn--primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+@media (min-width: 640px) {
+  .out-of-credit-plans,
+  .credit-plans-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .out-of-credit-plan,
+  .credit-plan {
+    grid-template-rows: auto auto auto 1fr auto;
+  }
+
+  .out-of-credit-plan__head,
+  .credit-plan__head {
+    flex-direction: column;
+    align-items: flex-start;
+    padding-right: 0;
+  }
+
+  .out-of-credit-plan--featured .out-of-credit-plan__head,
+  .credit-plan--featured .credit-plan__head {
+    padding-right: 0;
+    padding-top: 0.35rem;
+  }
+
+  .out-of-credit-plan__badge,
+  .credit-plan__badge {
+    position: static;
+    justify-self: start;
+    margin-bottom: 0.15rem;
+  }
+
+  .out-of-credit-plan--featured .out-of-credit-plan__badge,
+  .credit-plan--featured .credit-plan__badge {
+    position: absolute;
+    top: 0.65rem;
+    right: 0.75rem;
+    margin: 0;
+  }
+}

@@ -3,8 +3,15 @@ import { getAuth, onAuthStateChanged, signOut as firebaseSignOut } from "https:/
 import {
   buildDisplayName,
   loadUserProfile,
+  loadUserProfileFromCache,
+  profileHasDisplayableData,
   saveUserProfile,
 } from "./Firebase/user-profile.service.module.js";
+import { ensureAccountCredits, takeProfileBonusNotice } from "./Firebase/credits.module.js";
+import {
+  hasProfilePhoto,
+  readFarmSetupStats,
+} from "./farm-setup-status.module.js";
 
 function initialsFromProfile(profile, user) {
   const first = profile?.firstName?.trim();
@@ -21,38 +28,7 @@ function initialsFromProfile(profile, user) {
 }
 
 function readFarmStats() {
-  let tileCount = 0;
-  let scansSaved = 0;
-  let farmWeek = null;
-
-  try {
-    const layoutRaw = localStorage.getItem("tomatoInsight.farmLayout");
-    if (layoutRaw) {
-      const layout = JSON.parse(layoutRaw);
-      if (layout.rows >= 1 && layout.columns >= 1) {
-        tileCount = layout.rows * layout.columns;
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-
-  try {
-    const tilesRaw = localStorage.getItem("tomatoInsight.tilePlantInfo");
-    const tiles = tilesRaw ? JSON.parse(tilesRaw) : {};
-    scansSaved = Object.values(tiles).filter((t) => t && typeof t === "object" && t.savedAt).length;
-  } catch {
-    /* ignore */
-  }
-
-  try {
-    const w = Number.parseInt(localStorage.getItem("tomatoInsight.selectedFarmWeek"), 10);
-    if (!Number.isNaN(w)) farmWeek = w;
-  } catch {
-    /* ignore */
-  }
-
-  return { tileCount, scansSaved, farmWeek };
+  return readFarmSetupStats();
 }
 
 function bindProfileHero(user, profile) {
@@ -89,6 +65,15 @@ function bindProfileHero(user, profile) {
 
   renderEvents(stats);
   renderTasks(profile, stats);
+  syncProfileCreditReminders();
+}
+
+function syncProfileCreditReminders() {
+  const show = Boolean(window.TomatoInsightCredits?.shouldShowProfileCreditReminder?.());
+  const setupReminder = document.getElementById("profile-credits-reminder");
+  const detailsReminder = document.getElementById("profile-details-credits-reminder");
+  if (setupReminder) setupReminder.hidden = !show;
+  if (detailsReminder) detailsReminder.hidden = !show;
 }
 
 function showProfilePhoto(photo) {
@@ -108,6 +93,17 @@ function showProfilePhoto(photo) {
   window.dispatchEvent(
     new CustomEvent("tomatoInsight:profilePhoto", { detail: { photo: valid ? photo : "" } })
   );
+}
+
+let initialProfileLoad = true;
+let profileLoadToken = 0;
+
+function setProfileLoading(active) {
+  const wrap = document.getElementById("profile-wrap");
+  if (!wrap) return;
+  wrap.classList.toggle("profile-wrap--loading", active);
+  const load = document.getElementById("profile-load");
+  if (load) load.setAttribute("aria-busy", active ? "true" : "false");
 }
 
 function setPhotoStatus(message, ok) {
@@ -196,25 +192,36 @@ function renderEvents(stats) {
   if (!root) return;
   if (!stats.tileCount) {
     root.innerHTML =
-      `<article class="profile-event profile-event--quiet"><strong>No farm layout yet</strong><p>Set rows and columns on Home to start tracking plants.</p></article>`;
+      `<p class="profile-act-empty">Set rows and columns on Home to start tracking plants.</p>`;
     return;
   }
   const week = stats.farmWeek != null ? `Week ${stats.farmWeek}` : "No week selected";
   const scans =
     stats.scansSaved === 1 ? "1 saved scan" : `${stats.scansSaved} saved scans`;
+  const empty =
+    stats.scansSaved === 0
+      ? `<p class="profile-act-empty">Your next scan will appear here.</p>`
+      : "";
   root.innerHTML =
-    `<article class="profile-event"><strong>${week}</strong><p>${scans} on this farm. Open Monitoring to compare the latest result.</p></article>`;
+    `<article class="profile-act"><b>${week}</b><span>${scans} on this farm. Open Monitoring to compare the latest result.</span></article>${empty}`;
 }
 
 function renderTasks(profile, stats) {
   const list = document.getElementById("profile-tasks");
   const progress = document.getElementById("profile-tasks-progress");
+  const sub = document.getElementById("profile-tasks-sub");
+  const bar = document.getElementById("profile-tasks-bar");
+  const meter = document.getElementById("profile-tasks-meter");
   if (!list) return;
+  const displayName = buildDisplayName(profile);
+  const layoutNote = stats.tileCount
+    ? `${stats.tileCount} tiles${stats.rows && stats.columns ? `, ${stats.rows} × ${stats.columns}` : ""}`
+    : "Choose rows and columns";
   const tasks = [
     {
       done: Boolean(profile.firstName?.trim() && profile.lastName?.trim()),
       title: "Add your name",
-      note: "First and last name on this profile",
+      note: escapeHtml(displayName || "First and last name on this profile"),
     },
     {
       done: Boolean(profile.farmName?.trim()),
@@ -222,38 +229,80 @@ function renderTasks(profile, stats) {
       note: escapeHtml(profile.farmName?.trim() || "Shown on your profile"),
     },
     {
+      done: hasProfilePhoto(profile),
+      title: "Add a profile photo",
+      note: hasProfilePhoto(profile) ? "Your photo is on this profile" : "Use the avatar above to upload a photo.",
+      setupAction: "photo",
+      link: "Upload photo",
+    },
+    {
       done: stats.tileCount > 0,
       title: "Set the farm layout",
-      note: stats.tileCount ? `${stats.tileCount} tiles` : "Choose rows and columns",
+      note: escapeHtml(layoutNote),
       href: "index.html",
-      link: "Home",
+      link: "Edit",
     },
     {
       done: stats.scansSaved > 0,
-      title: "Save a leaf scan",
-      note: stats.scansSaved ? `${stats.scansSaved} saved` : "Scan a tile and tap Save Info",
+      title: "Save your first leaf scan",
+      note: stats.scansSaved ? `${stats.scansSaved} saved` : "Scan a tile, then tap Save info.",
       href: "index.html",
-      link: "Scan",
+      link: "Scan a leaf",
     },
     {
       done: stats.farmWeek != null,
       title: "Choose a farm week",
       note: stats.farmWeek != null ? `Week ${stats.farmWeek}` : "Pick a week in History or Monitoring",
       href: "monitoring.html",
-      link: "Monitoring",
+      link: "Change",
     },
   ];
   const doneCount = tasks.filter((task) => task.done).length;
-  if (progress) progress.textContent = `${doneCount}/${tasks.length} completed`;
+  const left = tasks.length - doneCount;
+  const pct = Math.round((doneCount / tasks.length) * 100);
+  const nextIndex = tasks.findIndex((task) => !task.done);
+  if (progress) progress.textContent = `${doneCount} of ${tasks.length} done`;
+  if (sub) {
+    sub.textContent =
+      left === 0
+        ? "Farm setup is complete."
+        : left === 1
+          ? "One step left to start tracking plant health."
+          : `${left} steps left to start tracking plant health.`;
+  }
+  if (bar) bar.style.width = `${pct}%`;
+  if (meter) {
+    meter.setAttribute("aria-valuenow", String(pct));
+    meter.setAttribute("aria-valuetext", `${doneCount} of ${tasks.length} done`);
+  }
+  const ring = document.getElementById("profile-setup-ring");
+  if (ring) {
+    ring.style.setProperty("--setup-pct", `${pct}%`);
+    ring.setAttribute("aria-valuenow", String(pct));
+    ring.setAttribute("aria-valuetext", `${doneCount} of ${tasks.length} done`);
+  }
+  const check =
+    `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7"/></svg>`;
   list.innerHTML = tasks
-    .map(
-      (task) =>
-        `<li class="profile-task${task.done ? " profile-task--done" : ""}">` +
-        `<span class="profile-task__check" aria-hidden="true"></span>` +
-        `<div><p class="profile-task__title">${task.title}</p><p class="profile-task__note">${task.note}</p></div>` +
-        (task.href ? `<a class="profile-task__link" href="${task.href}">${task.link}</a>` : `<span></span>`) +
+    .map((task, index) => {
+      const next = index === nextIndex;
+      const classes = ["profile-step"];
+      if (task.done) classes.push("profile-step--done");
+      if (next) classes.push("profile-step--next");
+      let action = "";
+      if (task.href) {
+        action = `<a class="${next ? "profile-step__btn" : "profile-step__link"}" href="${task.href}">${task.link}</a>`;
+      } else if (task.setupAction === "photo" && task.link) {
+        action = `<button type="button" class="${next ? "profile-step__btn" : "profile-step__link"}" data-setup-upload-photo="1">${task.link}</button>`;
+      }
+      return (
+        `<li class="${classes.join(" ")}">` +
+        `<span class="profile-step__dot">${task.done ? check : ""}</span>` +
+        `<div><b>${task.title}</b><small>${task.note}</small></div>` +
+        action +
         `</li>`
-    )
+      );
+    })
     .join("");
 }
 
@@ -286,8 +335,8 @@ function syncCalendarButton(schedule) {
   const reset = document.getElementById("profile-calendar-reset");
   if (button) {
     button.setAttribute("aria-pressed", schedule.enabled ? "true" : "false");
+    button.setAttribute("aria-checked", schedule.enabled ? "true" : "false");
     button.classList.toggle("profile-calendar__custom-btn--on", schedule.enabled);
-    button.textContent = schedule.enabled ? "Custom dates on" : "Custom dates";
   }
   if (reset) reset.hidden = !schedule.enabled;
 }
@@ -306,11 +355,9 @@ function renderCalendar() {
   const firstWeekday = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   if (title) {
-    title.textContent = calendarCursor
-      .toLocaleString(undefined, { month: "long", year: "numeric" })
-      .toUpperCase();
+    title.textContent = calendarCursor.toLocaleString(undefined, { month: "long", year: "numeric" });
   }
-  const labels = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const cells = labels.map((label) => `<span class="profile-calendar__dow">${label}</span>`);
   for (let i = 0; i < firstWeekday; i += 1) {
     cells.push(`<span class="profile-calendar__day profile-calendar__day--empty"></span>`);
@@ -337,13 +384,15 @@ function startProfileClock() {
   const clock = document.getElementById("profile-clock");
   if (!clock) return;
   const tick = () => {
-    clock.textContent = new Date().toLocaleString(undefined, {
+    const now = new Date();
+    const date = now.toLocaleDateString(undefined, {
+      weekday: "long",
       month: "long",
       day: "numeric",
       year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
     });
+    const time = now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    clock.textContent = `${date} · ${time}`;
   };
   tick();
   setInterval(tick, 30000);
@@ -423,6 +472,31 @@ function initProfilePage() {
   const errorEl = document.getElementById("profile-form-error");
   const successEl = document.getElementById("profile-form-success");
   const saveBtn = document.getElementById("profile-save-btn");
+  let profileSaveInFlight = false;
+
+  function showProfileBonusNotice(message) {
+    showMessage(
+      successEl,
+      message || "5 credits were added because farm setup is complete."
+    );
+  }
+
+  if (takeProfileBonusNotice()) showProfileBonusNotice();
+  window.addEventListener("tomatoInsight:creditsChanged", (event) => {
+    syncProfileCreditReminders();
+    if (event.detail?.profileBonusJustGranted) return;
+    if (profileSaveInFlight || !takeProfileBonusNotice()) return;
+    showProfileBonusNotice();
+  });
+
+  document.getElementById("profile-tasks")?.addEventListener("click", (event) => {
+    const button =
+      event.target instanceof Element ? event.target.closest("[data-setup-upload-photo]") : null;
+    if (!button) return;
+    event.preventDefault();
+    document.getElementById("profile-photo-input")?.click();
+    document.getElementById("profile-setup-ring")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
 
   startProfileClock();
   renderCalendar();
@@ -487,6 +561,14 @@ function initProfilePage() {
     bindProfileHero(user, result.profile);
     fillProfileForm(form, result.profile);
     setPhotoStatus(photo ? "Photo saved." : "Photo removed.", true);
+    try {
+      const credits = await ensureAccountCredits(user.uid, result.profile);
+      if (credits.profileBonusJustGranted) {
+        showProfileBonusNotice("Farm setup is complete. 5 credits were added to your account.");
+      }
+    } catch (err) {
+      console.warn("[TomatoInsight] Could not sync credits after photo save.", err);
+    }
   }
 
   photoInput?.addEventListener("change", async () => {
@@ -515,10 +597,35 @@ function initProfilePage() {
     }
   });
 
-  async function refreshProfileView(user) {
-    const profile = await loadUserProfile(user.uid, user);
+  async function refreshProfileView(user, options = {}) {
+    const background = options.background === true;
+    const token = (profileLoadToken += 1);
+
+    if (!background) {
+      const cached = loadUserProfileFromCache(user.uid, user);
+      if (profileHasDisplayableData(cached)) {
+        bindProfileHero(user, cached);
+        fillProfileForm(form, cached);
+        setProfileLoading(false);
+        initialProfileLoad = false;
+      } else if (initialProfileLoad) {
+        setProfileLoading(true);
+      }
+    }
+
+    await window.TomatoInsightUserData?.whenReady?.();
+    if (token !== profileLoadToken) return;
+
+    const profile = await loadUserProfile(user.uid, user, { skipWhenReady: true });
+    if (token !== profileLoadToken) return;
+
     bindProfileHero(user, profile);
     fillProfileForm(form, profile);
+
+    if (!background) {
+      setProfileLoading(false);
+      initialProfileLoad = false;
+    }
   }
 
   onAuthStateChanged(auth, (user) => {
@@ -526,9 +633,14 @@ function initProfilePage() {
     refreshProfileView(user);
   });
 
-  window.addEventListener("tomatoInsight:userDataReady", () => {
+  window.addEventListener("tomatoInsight:userDataReady", (event) => {
     const user = auth.currentUser;
-    if (user) refreshProfileView(user);
+    if (!user) return;
+    const shouldRefresh = window.TomatoInsightUserData?.shouldRefreshUiForUserDataEvent?.(
+      event.detail
+    );
+    if (shouldRefresh === false) return;
+    refreshProfileView(user, { background: Boolean(event.detail?.background) });
   });
 
   form?.addEventListener("submit", async (e) => {
@@ -551,6 +663,8 @@ function initProfilePage() {
     form.middleInitial.removeAttribute("aria-invalid");
 
     saveBtn.disabled = true;
+    profileSaveInFlight = true;
+    const balanceBeforeSave = window.TomatoInsightCredits?.getBalance?.();
     try {
       const result = await saveUserProfile(user.uid, {
         firstName: form.firstName.value,
@@ -566,7 +680,31 @@ function initProfilePage() {
 
       bindProfileHero(user, result.profile);
       fillProfileForm(form, result.profile);
-      showMessage(successEl, result.warning || "Your details were saved.");
+      let bonusJustGranted = false;
+      let showBonusToast = false;
+      let balanceAfterSave = null;
+      try {
+        const credits = await ensureAccountCredits(user.uid, result.profile);
+        balanceAfterSave = Number(credits.balance);
+        const gainedProfileBonus =
+          Number.isFinite(balanceBeforeSave) &&
+          Number.isFinite(balanceAfterSave) &&
+          balanceAfterSave - balanceBeforeSave >= 5 &&
+          credits.profileBonusGranted;
+        showBonusToast = Boolean(credits.profileBonusJustGranted) || gainedProfileBonus;
+        bonusJustGranted = showBonusToast;
+      } catch (err) {
+        console.warn("[TomatoInsight] Could not add profile credits.", err);
+      }
+      // A sign-in sync can grant the bonus while this save is in flight (inline message only).
+      bonusJustGranted =
+        showBonusToast || bonusJustGranted || takeProfileBonusNotice();
+      showMessage(
+        successEl,
+        bonusJustGranted
+          ? "Your details were saved. 5 credits were added because farm setup is complete."
+          : result.warning || "Your details were saved."
+      );
       window.dispatchEvent(
         new CustomEvent("tomatoInsight:profileUpdated", {
           detail: { uid: user.uid, displayName: result.displayName || "" },
@@ -574,6 +712,7 @@ function initProfilePage() {
       );
       window.TomatoInsightStorageSnapshot?.schedule?.();
     } finally {
+      profileSaveInFlight = false;
       saveBtn.disabled = false;
     }
   });

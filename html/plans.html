@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-auth="required">
+  <head>
+    <meta charset="UTF-8" />
+    <script src="../js/Authentication/auth-session.js"></script>
+    <script src="../js/Firebase/firebase-config.js"></script>
+    <script type="module" src="../js/Authentication/auth-guard.module.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      try {
+        if (localStorage.getItem("tomatoInsight.sidebarCollapsed") === "1") {
+          document.documentElement.classList.add("sidebar-collapsed");
+        }
+      } catch (e) {}
+    </script>
+    <title>Tomato Insight — Credit plans</title>
+    <link rel="icon" href="../img/LogoTomatoInsight.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/base.css" />
+    <link rel="stylesheet" href="../css/page-layout.css" />
+    <link rel="stylesheet" href="../css/credit-plans.css" />
+    <link rel="stylesheet" href="../css/plans.css" />
+  </head>
+  <body class="page-plans">
+    <div class="viewport">
+      <div class="dashboard-shell" role="application" aria-label="Tomato Insight">
+        <aside class="sidebar" aria-label="Main navigation">
+          <div class="sidebar__top">
+            <a class="brand" href="index.html" aria-label="Tomato Insight home">
+              <span class="brand__mark">
+                <img
+                  class="brand__mark-img"
+                  src="../img/LogoTomatoInsight.png"
+                  alt=""
+                  width="40"
+                  height="40"
+                  decoding="async"
+                />
+              </span>
+              <span class="brand__text">
+                <span class="brand__name">Tomato Insight</span>
+                <span class="brand__tagline">Farm dashboard</span>
+              </span>
+            </a>
+            <button type="button" class="sidebar__toggle" id="sidebar-toggle" aria-expanded="true" aria-label="Hide sidebar labels">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+              </svg>
+            </button>
+            <nav class="nav">
+              <a class="nav__link" href="index.html">
+                <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+                </svg>
+                Home
+              </a>
+              <a class="nav__link" href="monitoring.html">
+                <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M20 3H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h3l-1 1v1h12v-1l-1-1h3c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 13H4V5h16v11z"
+                  />
+                </svg>
+                Monitoring
+              </a>
+              <a class="nav__link" href="history.html">
+                <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"
+                  />
+                </svg>
+                History
+              </a>
+              <a class="nav__link" href="profile.html">
+                <svg class="nav__icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                  />
+                </svg>
+                Profile
+              </a>
+            </nav>
+          </div>
+          <a class="sidebar__avatar" href="profile.html" aria-label="Open profile">
+            <span class="sidebar__avatar-face">
+              <span class="sidebar__avatar-dot" aria-hidden="true"></span>
+              <span class="sidebar__avatar-status" aria-hidden="true"></span>
+            </span>
+            <span class="sidebar__avatar-name">Account</span>
+          </a>
+        </aside>
+
+        <div class="content-frame">
+          <main class="main-panel">
+            <header class="plans-top">
+              <div>
+                <h1>Credit plans</h1>
+                <p class="plans-top__sub">
+                  Each saved scan uses 1 credit. Plan buttons add credits instantly for testing (no payment yet).
+                </p>
+              </div>
+              <div class="plans-balance" aria-live="polite">
+                <span class="plans-balance__label">Your balance</span>
+                <span class="plans-balance__value" id="plans-balance-value">—</span>
+              </div>
+            </header>
+
+            <section class="plans-card" aria-labelledby="plans-packs-title">
+              <p class="plans-card__eyebrow">Top up</p>
+              <h2 class="plans-card__title" id="plans-packs-title">Choose a pack</h2>
+              <p class="plans-card__intro">1 credit = 1 successful save after a leaf scan and classification.</p>
+              <ul class="credit-plans-grid" role="list">
+                <li class="credit-plan">
+                  <div class="credit-plan__head">
+                    <span class="credit-plan__name">Starter</span>
+                    <span class="credit-plan__credits">10 credits</span>
+                  </div>
+                  <p class="credit-plan__price"><span class="credit-plan__amount">$4.99</span></p>
+                  <p class="credit-plan__note">About $0.50 per scan</p>
+                  <button type="button" class="credit-plan__btn" data-credit-topup="10">Add 10 credits (test)</button>
+                </li>
+                <li class="credit-plan credit-plan--featured">
+                  <span class="credit-plan__badge">Popular</span>
+                  <div class="credit-plan__head">
+                    <span class="credit-plan__name">Grower</span>
+                    <span class="credit-plan__credits">25 credits</span>
+                  </div>
+                  <p class="credit-plan__price"><span class="credit-plan__amount">$9.99</span></p>
+                  <p class="credit-plan__note">About $0.40 per scan</p>
+                  <button type="button" class="credit-plan__btn credit-plan__btn--primary" data-credit-topup="25">
+                    Add 25 credits (test)
+                  </button>
+                </li>
+                <li class="credit-plan">
+                  <div class="credit-plan__head">
+                    <span class="credit-plan__name">Season</span>
+                    <span class="credit-plan__credits">50 credits</span>
+                  </div>
+                  <p class="credit-plan__price"><span class="credit-plan__amount">$17.99</span></p>
+                  <p class="credit-plan__note">About $0.36 per scan</p>
+                  <button type="button" class="credit-plan__btn" data-credit-topup="50">Add 50 credits (test)</button>
+                </li>
+              </ul>
+              <p class="plans-footnote">
+                New accounts receive 10 free credits. Complete all six farm setup steps on your profile for 5 bonus
+                credits (one time).
+              </p>
+            </section>
+
+            <a class="plans-back" href="profile.html">← Back to profile</a>
+          </main>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="../js/plans.module.js"></script>
+    <script src="../js/sidebar-toggle.js"></script>
+  </body>
+</html>

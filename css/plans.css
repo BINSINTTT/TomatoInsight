@@ -1,0 +1,105 @@
+.page-plans .plans-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.page-plans .plans-top h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 1.85rem);
+}
+
+.page-plans .plans-top__sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.9375rem;
+  color: var(--muted);
+  max-width: 36rem;
+  line-height: 1.5;
+}
+
+.page-plans .plans-balance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 1rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 24px rgba(36, 48, 70, 0.06);
+  min-width: 8.5rem;
+}
+
+.page-plans .plans-balance__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.page-plans .plans-balance__value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.page-plans .plans-balance__value--low {
+  color: #b71c1c;
+}
+
+.page-plans .plans-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  padding: 1.35rem 1.35rem 1.5rem;
+  box-shadow: 0 10px 32px rgba(36, 48, 70, 0.05);
+}
+
+.page-plans .plans-card__eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.page-plans .plans-card__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.page-plans .plans-card__intro {
+  margin: 0 0 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.page-plans .plans-footnote {
+  margin: 1.25rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.page-plans .plans-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.page-plans .plans-back:hover {
+  text-decoration: underline;
+}

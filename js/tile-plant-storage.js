@@ -31,6 +31,7 @@
     if (!Number.isFinite(weekNumber)) return null;
     return {
       savedAt: info.savedAt || null,
+      scanDayIso: typeof info.scanDayIso === "string" ? info.scanDayIso : "",
       weekNumber,
       scores: info.scores || {},
       topBarKey: info.topBarKey ?? null,

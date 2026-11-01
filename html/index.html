@@ -23,6 +23,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../css/base.css" />
+    <link rel="stylesheet" href="../css/credit-plans.css" />
     <link rel="stylesheet" href="../css/home.css" />
   </head>
   <body>
@@ -95,7 +96,7 @@
               <span class="sidebar__avatar-dot" aria-hidden="true"></span>
               <span class="sidebar__avatar-status" aria-hidden="true"></span>
             </span>
-            <span class="sidebar__avatar-name" hidden></span>
+            <span class="sidebar__avatar-name">Account</span>
           </a>
         </aside>
 
@@ -117,7 +118,14 @@
             <div class="dashboard-metrics">
               <div class="metric-card">
                 <span class="metric-card__icon metric-card__icon--plants" aria-hidden="true">
-                  <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 22c-.55 0-1-.45-1-1v-5.07C7.06 15.44 4 12.08 4 8V6h2c2.46 0 4.63 1.24 5.92 3.13C12.97 5.58 16.2 3 20 3h1v2c0 4.42-3.13 8.11-7.29 8.94L13 14v7c0 .55-.45 1-1 1z" /></svg>
+                  <img
+                    class="metric-card__icon-img"
+                    src="../img/tileIconLeaf.png"
+                    alt=""
+                    width="32"
+                    height="32"
+                    decoding="async"
+                  />
                 </span>
                 <div class="metric-card__text">
                   <span class="metric-card__value" id="metric-total-plants">0</span>
@@ -126,7 +134,14 @@
               </div>
               <div class="metric-card">
                 <span class="metric-card__icon metric-card__icon--healthy" aria-hidden="true">
-                  <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
+                  <img
+                    class="metric-card__icon-img"
+                    src="../img/healthyIcon.png"
+                    alt=""
+                    width="32"
+                    height="32"
+                    decoding="async"
+                  />
                 </span>
                 <div class="metric-card__text">
                   <span class="metric-card__value" id="metric-healthy-plants">0</span>
@@ -143,12 +158,18 @@
                 </div>
               </div>
               <div class="metric-card">
-                <span class="metric-card__icon metric-card__icon--layout" aria-hidden="true">
-                  <svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" /></svg>
+                <span class="metric-card__icon metric-card__icon--credits" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path
+                      fill="currentColor"
+                      d="M12 2a10 10 0 1 0 .01 20.01A10 10 0 0 0 12 2zm1.1 14.5h-1.2v-1.05c-1.35-.18-2.4-.95-2.4-2.2h1.55c.02.55.45.95 1.2.95.78 0 1.25-.38 1.25-.95 0-.52-.32-.8-1.35-1.05l-.55-.13c-1.55-.37-2.45-1.15-2.45-2.45 0-1.22.95-2.05 2.25-2.25V6.2h1.2v1.12c1.15.2 2.05.9 2.15 2.05h-1.55c-.05-.5-.4-.9-1.05-.9-.65 0-1.1.32-1.1.82 0 .45.32.7 1.28.95l.62.15c1.62.4 2.5 1.15 2.5 2.5 0 1.35-1.05 2.2-2.4 2.4v1.21z"
+                    />
+                  </svg>
                 </span>
                 <div class="metric-card__text">
-                  <span class="metric-card__value metric-card__value--small" id="farm-layout-summary">Not set</span>
-                  <span class="metric-card__label">Layout</span>
+                  <span class="metric-card__value" id="metric-credits" aria-live="polite">—</span>
+                  <span class="metric-card__label">Credits</span>
+                  <span class="metric-card__hint" id="metric-credits-hint" hidden>Complete farm setup for 5 more</span>
                 </div>
               </div>
             </div>
@@ -210,7 +231,7 @@
         </header>
 
         <form class="modal__body" id="layout-form">
-          <p class="modal__intro">Configure rows and columns (1–6 each), matching the mobile app.</p>
+          <p class="modal__intro">Choose 1 to 10 rows and 1 to 10 columns. A full farm is 100 tiles.</p>
 
           <div class="stepper-row">
             <div class="stepper">
@@ -325,7 +346,7 @@
             </div>
             <img class="scan-upload__preview" id="scan-upload-preview" alt="Uploaded plant preview" hidden />
             <p class="scan-upload__status" id="scan-upload-status" hidden aria-live="polite" aria-label="Classifying image">
-              <span class="scan-upload__spinner" aria-hidden="true"></span>
+              <span class="scan-upload__loader" aria-hidden="true"></span>
             </p>
           </div>
 
@@ -414,6 +435,74 @@
           </div>
         </div>
       </aside>
+    </div>
+
+    <div
+      class="modal out-of-credit-modal"
+      id="out-of-credit-modal"
+      hidden
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="out-of-credit-title"
+      aria-describedby="out-of-credit-desc"
+    >
+      <div class="modal__backdrop" data-close-out-of-credit tabindex="-1" aria-hidden="true"></div>
+      <div class="modal__panel out-of-credit-modal__panel">
+        <header class="modal__header">
+          <div>
+            <p class="out-of-credit-modal__eyebrow">Scan credits</p>
+            <h2 class="modal__title" id="out-of-credit-title">Out of credit</h2>
+          </div>
+          <button type="button" class="modal__close" data-close-out-of-credit aria-label="Close">×</button>
+        </header>
+        <div class="modal__body">
+          <p class="modal__intro" id="out-of-credit-desc">
+            Each saved scan uses 1 credit. Pick a sample pack below to see how pricing could work — checkout is
+            not live yet.
+          </p>
+          <ul class="out-of-credit-plans" role="list">
+            <li class="out-of-credit-plan">
+              <div class="out-of-credit-plan__head">
+                <span class="out-of-credit-plan__name">Starter</span>
+                <span class="out-of-credit-plan__credits">10 credits</span>
+              </div>
+              <p class="out-of-credit-plan__price"><span class="out-of-credit-plan__amount">$4.99</span></p>
+              <p class="out-of-credit-plan__note">About $0.50 per scan</p>
+              <button type="button" class="out-of-credit-plan__btn" data-credit-topup="10">Add 10 credits (test)</button>
+            </li>
+            <li class="out-of-credit-plan out-of-credit-plan--featured">
+              <span class="out-of-credit-plan__badge">Popular</span>
+              <div class="out-of-credit-plan__head">
+                <span class="out-of-credit-plan__name">Grower</span>
+                <span class="out-of-credit-plan__credits">25 credits</span>
+              </div>
+              <p class="out-of-credit-plan__price"><span class="out-of-credit-plan__amount">$9.99</span></p>
+              <p class="out-of-credit-plan__note">About $0.40 per scan</p>
+              <button type="button" class="out-of-credit-plan__btn out-of-credit-plan__btn--primary" data-credit-topup="25">
+                Add 25 credits (test)
+              </button>
+            </li>
+            <li class="out-of-credit-plan">
+              <div class="out-of-credit-plan__head">
+                <span class="out-of-credit-plan__name">Season</span>
+                <span class="out-of-credit-plan__credits">50 credits</span>
+              </div>
+              <p class="out-of-credit-plan__price"><span class="out-of-credit-plan__amount">$17.99</span></p>
+              <p class="out-of-credit-plan__note">About $0.36 per scan</p>
+              <button type="button" class="out-of-credit-plan__btn" data-credit-topup="50">Add 50 credits (test)</button>
+            </li>
+          </ul>
+          <p class="out-of-credit-modal__footnote">
+            New accounts start with 10 free credits. Finish all six farm setup steps on your
+            <a href="profile.html">profile</a> for 5 more (one time), or
+            <a href="plans.html">view all credit plans</a>.
+          </p>
+        </div>
+        <footer class="modal__footer out-of-credit-modal__footer">
+          <a class="btn btn--primary out-of-credit-modal__plans-link" href="plans.html">View plans</a>
+          <button type="button" class="btn btn--ghost" data-close-out-of-credit>Not now</button>
+        </footer>
+      </div>
     </div>
 
     <div

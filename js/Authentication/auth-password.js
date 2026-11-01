@@ -39,7 +39,7 @@
     return passwordValidationError(password) === null;
   }
 
-  function updatePasswordRulesUI(password, listEl) {
+  function updatePasswordRulesUI(password, listEl, forceShow) {
     if (!listEl) return;
     listEl.querySelectorAll("[data-rule]").forEach((item) => {
       const id = item.getAttribute("data-rule");
@@ -47,6 +47,8 @@
       const ok = rule?.test(password) ?? false;
       item.classList.toggle("auth-password-rules__item--ok", ok);
     });
+    const failed = !isPasswordValid(password);
+    listEl.hidden = !(failed && (forceShow || password.length > 0));
   }
 
   function bindPasswordRules(passwordInput, listEl) {

@@ -492,3 +492,168 @@ body.modal-open {
     padding: 1.25rem;
   }
 }
+
+html[data-auth="required"].auth-pending:not(.auth-ready) body {
+  visibility: hidden;
+}
+
+html[data-auth="required"].auth-pending:not(.auth-ready)::before {
+  content: "Checking your account…";
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  background: #f6f3f1;
+  color: #3d342f;
+  font: 600 1rem/1.4 "DM Sans", system-ui, sans-serif;
+}
+
+.credit-toast-stack {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10050;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem;
+  width: min(24rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.credit-toast {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 0.85rem 1rem;
+  width: 100%;
+  padding: 1.15rem 2.65rem 1.15rem 1.15rem;
+  border-radius: 1.25rem;
+  color: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 12px 32px rgba(30, 67, 88, 0.12);
+  opacity: 0;
+  transform: translateX(1.25rem) scale(0.98);
+  transition: opacity 0.38s ease, transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: auto;
+}
+
+.credit-toast--success,
+.credit-toast--grant {
+  background: linear-gradient(135deg, #ecfdf5 0%, #eff6ff 52%, #f8fafc 100%);
+}
+
+.credit-toast--accent {
+  background: linear-gradient(135deg, #fff7ed 0%, #fef3c7 48%, #f8fafc 100%);
+}
+
+.credit-toast--deduct {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 42%, #f8fafc 100%);
+}
+
+.credit-toast.is-visible {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+
+.credit-toast.is-leaving {
+  opacity: 0;
+  transform: translateX(0.75rem) scale(0.98);
+}
+
+.credit-toast__icon {
+  flex-shrink: 0;
+  width: 2.85rem;
+  height: 2.85rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 6px 18px rgba(67, 160, 71, 0.14);
+}
+
+.credit-toast--accent .credit-toast__icon {
+  box-shadow: 0 6px 18px rgba(234, 88, 12, 0.14);
+}
+
+.credit-toast--deduct .credit-toast__icon {
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.12);
+}
+
+.credit-toast__icon-mark {
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+
+.credit-toast__icon-mark--check {
+  background: linear-gradient(145deg, #43a047, #2e7d32);
+}
+
+.credit-toast--accent .credit-toast__icon-mark--check {
+  background: linear-gradient(145deg, #fb923c, #ea580c);
+}
+
+.credit-toast__icon-mark--deduct {
+  background: linear-gradient(145deg, #ea580c, #c2410c);
+}
+
+.credit-toast__glyph {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.credit-toast__content {
+  min-width: 0;
+  padding-top: 0.1rem;
+}
+
+.credit-toast__title {
+  margin: 0 0 0.35rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.credit-toast__text {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.credit-toast__close {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 1.35rem;
+  line-height: 1;
+  padding: 0.15rem;
+  cursor: pointer;
+}
+
+.credit-toast__close:hover {
+  color: #0f172a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .credit-toast {
+    transition: none;
+  }
+
+  .credit-toast,
+  .credit-toast.is-visible,
+  .credit-toast.is-leaving {
+    transform: none;
+  }
+}

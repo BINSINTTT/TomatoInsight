@@ -102,21 +102,27 @@
     return isoFromDate(date);
   }
 
-  /** Next week for one plant. A later scan waits 7 days from its own day. */
-  function reminderWeekForPlant(savedAtIso, latestWeek) {
+  function scanDayForReminder(savedAtIso, scanDayIso) {
+    if (typeof scanDayIso === "string" && dateFromIso(scanDayIso)) return scanDayIso;
+    return isoFromInstant(savedAtIso);
+  }
+
+  /** Next week for one plant. Uses that tile's scan day, not the farm anchor shared by all tiles. */
+  function reminderWeekForPlant(savedAtIso, latestWeek, scanDayIso) {
     const schedule = read();
     if (!schedule.enabled || !schedule.anchor) return null;
     const week = Number(latestWeek);
     if (!Number.isFinite(week)) return null;
     const nextWeek = week + 1;
     if (nextWeek > 12) return null;
-    const scanIso = isoFromInstant(savedAtIso);
+    const scanIso = scanDayForReminder(savedAtIso, scanDayIso);
     if (!scanIso) return null;
-    const waited = daysBetween(scanIso, isoFromDate(new Date()));
+    const todayIso = isoFromDate(new Date());
+    const waited = daysBetween(scanIso, todayIso);
     if (waited != null && waited >= WEEK_DAYS) return nextWeek;
     if (schedule.nextDue && weekNumberForIso(schedule.nextDue) === nextWeek) {
-      const untilDue = daysBetween(scanIso, schedule.nextDue);
-      if (untilDue != null && untilDue >= WEEK_DAYS) return nextWeek;
+      const gap = daysBetween(scanIso, schedule.nextDue);
+      if (gap != null && gap >= WEEK_DAYS) return nextWeek;
     }
     return null;
   }
@@ -158,6 +164,7 @@
     chooseDate,
     weekNumberForIso,
     weekForScan,
+    scanDayForReminder,
     reminderWeekForPlant,
   };
 })();

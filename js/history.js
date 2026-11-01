@@ -52,7 +52,8 @@
       const latest = weeks[weeks.length - 1];
       const latestWeek = latest?.week ?? Number(tile.info.weekNumber);
       const savedAt = latest?.scan?.savedAt || tile.info.savedAt;
-      const nextWeek = calendar.reminderWeekForPlant(savedAt, latestWeek);
+      const scanDayIso = latest?.scan?.scanDayIso || tile.info.scanDayIso || "";
+      const nextWeek = calendar.reminderWeekForPlant(savedAt, latestWeek, scanDayIso);
       if (!Number.isFinite(nextWeek)) return;
       const savedWeeks = new Set(weeks.map((item) => item.week));
       if (!savedWeeks.has(nextWeek)) count += 1;

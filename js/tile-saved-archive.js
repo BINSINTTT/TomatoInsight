@@ -609,7 +609,13 @@
       }
     });
     window.addEventListener("focus", onRefresh);
-    window.addEventListener("tomatoInsight:userDataReady", onRefresh);
+    window.addEventListener("tomatoInsight:userDataReady", (event) => {
+      const shouldRefresh = window.TomatoInsightUserData?.shouldRefreshUiForUserDataEvent?.(
+        event.detail
+      );
+      if (shouldRefresh === false) return;
+      onRefresh();
+    });
     window.addEventListener("tomatoInsight:userDataCleared", onRefresh);
   }
 
