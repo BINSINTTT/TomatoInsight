@@ -65,11 +65,6 @@
     if (el) el.textContent = String(value);
   }
 
-  function initial(name) {
-    const letter = String(name || "?").trim().charAt(0);
-    return archive.escapeHtml(letter ? letter.toUpperCase() : "?");
-  }
-
   function statusHtml(kind, label) {
     return `<span class="history-status history-status--${kind}">${archive.escapeHtml(label)}</span>`;
   }
@@ -87,7 +82,7 @@
     const row = document.createElement("tr");
     row.innerHTML =
       `<td>#${archive.escapeHtml(tile.tileNum)}</td>` +
-      `<td><div class="history-plant"><span class="history-plant__mark">${initial(tile.displayName)}</span>${archive.escapeHtml(tile.displayName)}</div></td>` +
+      `<td class="history-plant">${archive.escapeHtml(tile.displayName)}</td>` +
       `<td>${archive.escapeHtml(when)}</td>` +
       `<td>${archive.escapeHtml(result)}</td>` +
       `<td>${status}</td>` +
@@ -105,7 +100,7 @@
     const row = document.createElement("tr");
     row.innerHTML =
       `<td>#${archive.escapeHtml(entry.tileNum ?? "—")}</td>` +
-      `<td><div class="history-plant"><span class="history-plant__mark">${initial(name)}</span>${archive.escapeHtml(name)}</div></td>` +
+      `<td class="history-plant">${archive.escapeHtml(name)}</td>` +
       `<td>${archive.escapeHtml(when)}</td>` +
       `<td>Removed</td>` +
       `<td>${statusHtml("deleted", "Deleted")}</td>` +
@@ -175,9 +170,15 @@
     archive.bindStorageRefresh(renderTable);
   }
 
+  function start() {
+    const boot = window.TomatoInsightAppPageLoad?.boot;
+    const run = boot ? boot({ message: "Loading history…" }) : Promise.resolve();
+    run.then(() => init());
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("DOMContentLoaded", start);
   } else {
-    init();
+    start();
   }
 })();

@@ -103,3 +103,49 @@
 .page-plans .plans-back:hover {
   text-decoration: underline;
 }
+
+.page-plans .plans-card--history {
+  margin-top: 1.25rem;
+}
+
+.page-plans .plans-payment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.page-plans .plans-payment {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.85rem;
+  background: var(--surface-muted, #f5f5f4);
+  border: 1px solid var(--line, rgba(36, 48, 70, 0.1));
+}
+
+.page-plans .plans-payment b {
+  font-size: 0.9375rem;
+}
+
+.page-plans .plans-payment span {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.page-plans .plans-card--history code {
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .page-plans .plans-card {
+    padding: 1rem;
+  }
+
+  .page-plans .plans-balance {
+    width: 100%;
+  }
+}

@@ -1,0 +1,13 @@
+// Add this match block to your existing Firestore rules so demo checkout can
+// write and users can query their own rows in the `payments` collection.
+//
+// Collection: payments/{paymentId}
+
+match /payments/{paymentId} {
+  allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+  allow create: if request.auth != null
+    && request.resource.data.uid == request.auth.uid
+    && request.resource.data.method == "demo"
+    && request.resource.data.amountChargedUsd == 0;
+  allow update, delete: if false;
+}

@@ -41,7 +41,7 @@ export function readFarmSetupStats() {
 
 export function hasProfilePhoto(profile) {
   const photo = String(profile?.photo || "");
-  return photo.startsWith("data:image/jpeg;base64,") && photo.length > 30;
+  return photo.startsWith("data:image/") && photo.length > 30;
 }
 
 export function isFarmSetupComplete(profile, stats = readFarmSetupStats()) {

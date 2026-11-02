@@ -7,7 +7,7 @@ import {
   profileHasDisplayableData,
   saveUserProfile,
 } from "./Firebase/user-profile.service.module.js";
-import { ensureAccountCredits, takeProfileBonusNotice } from "./Firebase/credits.module.js";
+import { ensureAccountCredits } from "./Firebase/credits.module.js";
 import {
   hasProfilePhoto,
   readFarmSetupStats,
@@ -36,7 +36,7 @@ function bindProfileHero(user, profile) {
   const farmEl = document.getElementById("profile-display-farm");
   const emailEl = document.getElementById("profile-display-email");
   const avatarEl = document.getElementById("profile-avatar-initials");
-  const displayName = buildDisplayName(profile) || user.displayName?.trim() || "Tomato Insight user";
+  const displayName = buildDisplayName(profile) || user.displayName?.trim() || "TomatoInsight user";
   const farmLabel = profile.farmName?.trim() || "Your farm";
 
   if (nameEl) nameEl.textContent = displayName;
@@ -99,11 +99,7 @@ let initialProfileLoad = true;
 let profileLoadToken = 0;
 
 function setProfileLoading(active) {
-  const wrap = document.getElementById("profile-wrap");
-  if (!wrap) return;
-  wrap.classList.toggle("profile-wrap--loading", active);
-  const load = document.getElementById("profile-load");
-  if (load) load.setAttribute("aria-busy", active ? "true" : "false");
+  window.TomatoInsightAppPageLoad?.setPageLoading?.(active);
 }
 
 function setPhotoStatus(message, ok) {
@@ -365,7 +361,7 @@ function renderCalendar() {
   for (let day = 1; day <= daysInMonth; day += 1) {
     const iso = api.isoFromDate(new Date(year, month, day));
     const classes = ["profile-calendar__day"];
-    if (iso === todayIso) classes.push("profile-calendar__day--today");
+    if (!schedule.enabled && iso === todayIso) classes.push("profile-calendar__day--today");
     if (schedule.enabled && iso === schedule.anchor) classes.push("profile-calendar__day--anchor");
     if (schedule.enabled && iso === schedule.nextDue) classes.push("profile-calendar__day--due");
     if (schedule.enabled && iso === schedule.selected) classes.push("profile-calendar__day--selected");
@@ -463,10 +459,22 @@ document.addEventListener("click", (event) => {
   signOutAndLeave(button);
 });
 
+let profilePageBootPromise = null;
+
+function ensureProfilePageBoot() {
+  if (!profilePageBootPromise) {
+    profilePageBootPromise =
+      window.TomatoInsightAppPageLoad?.boot?.({ message: "Loading your profile…" }) ||
+      Promise.resolve();
+  }
+  return profilePageBootPromise;
+}
+
 function initProfilePage() {
   const apps = getApps();
   if (!apps.length) return;
   const auth = getAuth(apps[0]);
+  const pageBoot = ensureProfilePageBoot();
 
   const form = document.getElementById("profile-details-form");
   const errorEl = document.getElementById("profile-form-error");
@@ -474,19 +482,8 @@ function initProfilePage() {
   const saveBtn = document.getElementById("profile-save-btn");
   let profileSaveInFlight = false;
 
-  function showProfileBonusNotice(message) {
-    showMessage(
-      successEl,
-      message || "5 credits were added because farm setup is complete."
-    );
-  }
-
-  if (takeProfileBonusNotice()) showProfileBonusNotice();
-  window.addEventListener("tomatoInsight:creditsChanged", (event) => {
+  window.addEventListener("tomatoInsight:creditsChanged", () => {
     syncProfileCreditReminders();
-    if (event.detail?.profileBonusJustGranted) return;
-    if (profileSaveInFlight || !takeProfileBonusNotice()) return;
-    showProfileBonusNotice();
   });
 
   document.getElementById("profile-tasks")?.addEventListener("click", (event) => {
@@ -561,14 +558,6 @@ function initProfilePage() {
     bindProfileHero(user, result.profile);
     fillProfileForm(form, result.profile);
     setPhotoStatus(photo ? "Photo saved." : "Photo removed.", true);
-    try {
-      const credits = await ensureAccountCredits(user.uid, result.profile);
-      if (credits.profileBonusJustGranted) {
-        showProfileBonusNotice("Farm setup is complete. 5 credits were added to your account.");
-      }
-    } catch (err) {
-      console.warn("[TomatoInsight] Could not sync credits after photo save.", err);
-    }
   }
 
   photoInput?.addEventListener("change", async () => {
@@ -630,7 +619,7 @@ function initProfilePage() {
 
   onAuthStateChanged(auth, (user) => {
     if (!user) return;
-    refreshProfileView(user);
+    pageBoot.then(() => refreshProfileView(user));
   });
 
   window.addEventListener("tomatoInsight:userDataReady", (event) => {
@@ -640,7 +629,9 @@ function initProfilePage() {
       event.detail
     );
     if (shouldRefresh === false) return;
-    refreshProfileView(user, { background: Boolean(event.detail?.background) });
+    pageBoot.then(() =>
+      refreshProfileView(user, { background: Boolean(event.detail?.background) })
+    );
   });
 
   form?.addEventListener("submit", async (e) => {
@@ -664,7 +655,6 @@ function initProfilePage() {
 
     saveBtn.disabled = true;
     profileSaveInFlight = true;
-    const balanceBeforeSave = window.TomatoInsightCredits?.getBalance?.();
     try {
       const result = await saveUserProfile(user.uid, {
         firstName: form.firstName.value,
@@ -681,24 +671,23 @@ function initProfilePage() {
       bindProfileHero(user, result.profile);
       fillProfileForm(form, result.profile);
       let bonusJustGranted = false;
-      let showBonusToast = false;
       let balanceAfterSave = null;
       try {
-        const credits = await ensureAccountCredits(user.uid, result.profile);
+        const credits = await ensureAccountCredits(user.uid, result.profile, {
+          grantProfileBonus: true,
+        });
         balanceAfterSave = Number(credits.balance);
-        const gainedProfileBonus =
-          Number.isFinite(balanceBeforeSave) &&
-          Number.isFinite(balanceAfterSave) &&
-          balanceAfterSave - balanceBeforeSave >= 5 &&
-          credits.profileBonusGranted;
-        showBonusToast = Boolean(credits.profileBonusJustGranted) || gainedProfileBonus;
-        bonusJustGranted = showBonusToast;
+        bonusJustGranted = Boolean(credits.profileBonusJustGranted);
+        if (bonusJustGranted) {
+          const bonus = window.TomatoInsightCredits?.PROFILE_BONUS_CREDITS ?? 5;
+          window.TomatoInsightCredits?.showProfileBonusAddedToast?.(
+            bonus,
+            Number.isFinite(balanceAfterSave) ? balanceAfterSave : credits.balance
+          );
+        }
       } catch (err) {
         console.warn("[TomatoInsight] Could not add profile credits.", err);
       }
-      // A sign-in sync can grant the bonus while this save is in flight (inline message only).
-      bonusJustGranted =
-        showBonusToast || bonusJustGranted || takeProfileBonusNotice();
       showMessage(
         successEl,
         bonusJustGranted

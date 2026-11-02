@@ -8,7 +8,6 @@
   const gridHost = document.getElementById("farm-grid");
   const layoutSummary = document.getElementById("farm-layout-summary");
   const totalPlantsEl = document.getElementById("metric-total-plants");
-
   const modal = document.getElementById("layout-modal");
   const form = document.getElementById("layout-form");
   const rowsInput = document.getElementById("input-rows");
@@ -328,7 +327,6 @@
       updateTileSaveStatus(record.savedAt, record.weekNumber);
       window.TomatoInsightNotifications?.syncTiles?.();
       window.TomatoInsightHomeOverview?.refresh?.();
-      void window.TomatoInsightCredits?.trySyncFarmSetupCredits?.();
     }
     return ok;
   }
@@ -408,14 +406,18 @@
     if (tileDrawerPosition) {
       tileDrawerPosition.textContent = `Row ${row + 1} · Column ${col + 1}`;
     }
-    resetScanUploadUI({ cancelRequests: !isScanInFlight(tileNum) });
-    loadPlantInfoForActiveTile();
+    const keepScan = isScanInFlight(tileNum);
+    resetScanUploadUI({ cancelRequests: false, keepScan });
+    if (!keepScan) loadPlantInfoForActiveTile();
     restoreTileDraft(tileNum);
     refreshScanLoadingUI();
     clearTimeout(tileDrawerCloseTimer);
     tileDrawer.hidden = false;
     document.body.classList.add("modal-open");
-    requestAnimationFrame(() => tileDrawer.classList.add("tile-drawer--visible"));
+    requestAnimationFrame(() => {
+      tileDrawer.classList.add("tile-drawer--visible");
+      refreshScanLoadingUI();
+    });
   }
 
   function plantNameForTile(tileNum) {
@@ -640,28 +642,31 @@
 
   function resetScanUploadUI(options = {}) {
     const cancelRequests = options.cancelRequests !== false;
+    const keepScan = options.keepScan === true;
     const zone = document.getElementById("scan-upload-zone");
     const input = document.getElementById("scan-upload-input");
     const preview = document.getElementById("scan-upload-preview");
     const placeholder = document.getElementById("scan-upload-placeholder");
     suppressDraft = true;
     if (input) input.value = "";
-    if (preview) {
-      preview.hidden = true;
-      preview.removeAttribute("src");
+    if (!keepScan) {
+      if (preview) {
+        preview.hidden = true;
+        preview.removeAttribute("src");
+      }
+      if (placeholder) placeholder.hidden = false;
+      zone?.classList.remove("scan-upload--has-image", "scan-upload--dragover", "scan-upload--validating");
+      const status = document.getElementById("scan-upload-status");
+      if (status) status.hidden = true;
+      tileDrawer?.querySelector(".scan-results")?.classList.remove("scan-results--loading");
+      activeTileImageDataUrl = null;
+      setClassificationScores({}, "reset");
+      updateTileSaveStatus(null);
     }
-    if (placeholder) placeholder.hidden = false;
-    zone?.classList.remove("scan-upload--has-image", "scan-upload--dragover", "scan-upload--validating");
-    const status = document.getElementById("scan-upload-status");
-    if (status) status.hidden = true;
-    tileDrawer?.querySelector(".scan-results")?.classList.remove("scan-results--loading");
     if (cancelRequests) {
       window.TomatoInsightValidation?.resetUI?.();
       scanInFlightTile = null;
     }
-    activeTileImageDataUrl = null;
-    setClassificationScores({}, "reset");
-    updateTileSaveStatus(null);
     suppressDraft = false;
     syncSaveInfoButton();
   }
@@ -1024,7 +1029,6 @@
     window.TomatoInsightUserData?.syncLayout?.(layout);
     window.TomatoInsightUserData?.flushFarmToCloud?.();
     renderDashboard();
-    void window.TomatoInsightCredits?.trySyncFarmSetupCredits?.();
   }
 
   function renderPreview(rows, columns) {
@@ -1272,6 +1276,16 @@
     renderDashboard();
   }
 
+  function bootDashboardFromCloud() {
+    const boot = window.TomatoInsightAppPageLoad?.boot;
+    const run = boot
+      ? boot({ message: "Loading your farm…" })
+      : Promise.resolve();
+    run.then(() => {
+      reloadFarmFromStorage();
+    });
+  }
+
   window.addEventListener("tomatoInsight:userDataReady", (event) => {
     const shouldRefresh = window.TomatoInsightUserData?.shouldRefreshUiForUserDataEvent?.(
       event.detail
@@ -1281,5 +1295,5 @@
   });
   window.addEventListener("tomatoInsight:userDataCleared", reloadFarmFromStorage);
 
-  renderDashboard();
+  bootDashboardFromCloud();
 })();

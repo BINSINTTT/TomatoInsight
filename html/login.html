@@ -6,7 +6,7 @@
     <script src="../js/Firebase/firebase-config.js"></script>
     <script type="module" src="../js/Authentication/auth-guard.module.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tomato Insight — Log in</title>
+    <title>TomatoInsight — Log in</title>
     <link rel="icon" href="../img/LogoTomatoInsight.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -40,7 +40,7 @@
                         src="../img/LogoTomatoInsight.png"
                         width="220"
                         height="auto"
-                        alt="Tomato Insight"
+                        alt="TomatoInsight"
                       />
 
                     </div>
@@ -69,15 +69,39 @@
 
                           <div class="mb-4">
                             <label class="form-label auth-split-label" for="login-password">Password</label>
-                            <input
-                              type="password"
-                              class="form-control auth-split-input"
-                              id="login-password"
-                              name="password"
-                              autocomplete="current-password"
-                              placeholder="Password"
-                              required
-                            />
+                            <div class="auth-field__input-wrap">
+                              <input
+                                type="password"
+                                class="form-control auth-split-input auth-split-input--toggle"
+                                id="login-password"
+                                name="password"
+                                autocomplete="current-password"
+                                placeholder="Password"
+                                required
+                              />
+                              <button
+                                type="button"
+                                class="auth-password-toggle"
+                                aria-label="Show password"
+                                aria-pressed="false"
+                                data-password-toggle
+                              >
+                                <span class="auth-password-toggle__icon auth-password-toggle__icon--show" aria-hidden="true">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                  </svg>
+                                </span>
+                                <span class="auth-password-toggle__icon auth-password-toggle__icon--hide" aria-hidden="true">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                                    <line x1="2" x2="22" y1="2" y2="22" />
+                                  </svg>
+                                </span>
+                              </button>
+                            </div>
                           </div>
 
                           <div class="text-center pt-1 mb-4 pb-1">
@@ -146,12 +170,12 @@
 
                       <div class="auth-panel auth-panel--signup" id="signup-panel" inert>
                         <form class="auth-form auth-form--split auth-form--compact" id="signup-form" novalidate>
-                          <p class="auth-split-lead mb-3">Create your Tomato Insight account</p>
+                          <p class="auth-split-lead mb-3">Create your <span class="ti-brand"><span >TomatoInsight account</span></p>
 
                           <p class="auth-form__error" id="signup-form-error" role="alert" hidden></p>
 
                           <div class="row g-2 mb-2 auth-form__row--name">
-                            <div class="col-sm-5">
+                            <div class="col-5">
                               <label class="form-label auth-split-label mb-1" for="signup-first-name">First name</label>
                               <input
                                 type="text"
@@ -162,7 +186,7 @@
                                 required
                               />
                             </div>
-                            <div class="col-4 col-sm-2">
+                            <div class="col-2">
                               <label class="form-label auth-split-label mb-1" for="signup-middle-initial">M.I.</label>
                               <input
                                 type="text"
@@ -176,7 +200,7 @@
                                 aria-label="Middle initial"
                               />
                             </div>
-                            <div class="col-sm-5">
+                            <div class="col-5">
                               <label class="form-label auth-split-label mb-1" for="signup-last-name">Last name</label>
                               <input
                                 type="text"
@@ -311,7 +335,7 @@
                     <div class="auth-hero-copy__item auth-hero-copy__item--login" id="auth-hero-login">
                       <h4 class="mb-4">Grow smarter, one leaf at a time</h4>
                       <p class="small mb-0">
-                        Tomato Insight maps your farm tile by tile, validates every photo as a real
+                        <span class="ti-brand">Tomato<Insight</span></span> maps your farm tile by tile, validates every photo as a real
                         tomato leaf, then scores it for disease &mdash; so you can treat problems early
                         and keep a history for every plant you scan.
                       </p>

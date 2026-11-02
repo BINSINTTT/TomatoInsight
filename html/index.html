@@ -14,7 +14,7 @@
         }
       } catch (e) {}
     </script>
-    <title>Tomato Insight — Dashboard</title>
+    <title>TomatoInsight — Dashboard</title>
     <link rel="icon" href="../img/LogoTomatoInsight.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -28,10 +28,10 @@
   </head>
   <body>
     <div class="viewport">
-      <div class="dashboard-shell" role="application" aria-label="Tomato Insight dashboard">
+      <div class="dashboard-shell" role="application" aria-label="TomatoInsight dashboard">
         <aside class="sidebar" aria-label="Main navigation">
           <div class="sidebar__top">
-            <a class="brand" href="index.html" aria-label="Tomato Insight home">
+            <a class="brand" href="index.html" aria-label="TomatoInsight home">
               <span class="brand__mark">
                 <img
                   class="brand__mark-img"
@@ -43,7 +43,7 @@
                 />
               </span>
               <span class="brand__text">
-                <span class="brand__name">Tomato Insight</span>
+                <span class="brand__name ti-brand"><span class="ti-brand__tomato">Tomato</span><span class="ti-brand__insight">Insight</span></span>
                 <span class="brand__tagline">Farm dashboard</span>
               </span>
             </a>
@@ -102,6 +102,12 @@
 
         <div class="content-frame">
           <main class="main-panel">
+            <div class="app-page-load" id="app-page-load" data-app-load-message="Loading your farm…" aria-live="polite" aria-busy="true">
+              <div class="app-page-load__panel">
+                <div class="app-page-load__ring" aria-hidden="true"></div>
+                <p class="app-page-load__text">Loading your farm…</p>
+              </div>
+            </div>
             <header class="page-header home-header">
               <div>
                 <p class="page-header__eyebrow">Welcome back,</p>
@@ -169,7 +175,7 @@
                 <div class="metric-card__text">
                   <span class="metric-card__value" id="metric-credits" aria-live="polite">—</span>
                   <span class="metric-card__label">Credits</span>
-                  <span class="metric-card__hint" id="metric-credits-hint" hidden>Complete farm setup for 5 more</span>
+                  <span class="metric-card__hint" id="metric-credits-hint" hidden>Update profile after farm setup for 5 more</span>
                 </div>
               </div>
             </div>
@@ -363,6 +369,27 @@
             <div class="validation-alert__panel">
               <h3 class="validation-alert__title" id="validation-alert-title">Validation</h3>
               <p class="validation-alert__message" id="validation-alert-message"></p>
+              <div class="validation-alert__guide" id="validation-alert-guide" hidden>
+                <div class="validation-alert__block">
+                  <h4 class="validation-alert__subtitle">Reasons</h4>
+                  <ul class="validation-alert__list" id="validation-alert-reasons">
+                    <li data-reason="not-leaf">Not a Tomato Leaf</li>
+                    <li data-reason="quality">Low quality Image</li>
+                    <li data-reason="background">Too much background</li>
+                  </ul>
+                </div>
+                <div class="validation-alert__block">
+                  <h4 class="validation-alert__subtitle">Recommendations</h4>
+                  <ul class="validation-alert__list validation-alert__list--tips">
+                    <li>Upload only one leaf on the image</li>
+                    <li>Upload good quality image</li>
+                  </ul>
+                </div>
+                <p class="validation-alert__reminder" id="validation-alert-reminder">
+                  Fill the frame with a single tomato leaf, use bright even light, and avoid busy backgrounds.
+                  When you are ready, choose a new photo in the upload area above and try again.
+                </p>
+              </div>
               <button type="button" class="validation-alert__ok" id="validation-alert-ok">OK</button>
             </div>
           </div>
@@ -457,8 +484,7 @@
         </header>
         <div class="modal__body">
           <p class="modal__intro" id="out-of-credit-desc">
-            Each saved scan uses 1 credit. Pick a sample pack below to see how pricing could work — checkout is
-            not live yet.
+            Each saved scan uses 1 credit. Pick a pack to open the free demo checkout (Pay $0).
           </p>
           <ul class="out-of-credit-plans" role="list">
             <li class="out-of-credit-plan">
@@ -468,7 +494,7 @@
               </div>
               <p class="out-of-credit-plan__price"><span class="out-of-credit-plan__amount">$4.99</span></p>
               <p class="out-of-credit-plan__note">About $0.50 per scan</p>
-              <button type="button" class="out-of-credit-plan__btn" data-credit-topup="10">Add 10 credits (test)</button>
+              <button type="button" class="out-of-credit-plan__btn" data-credit-pack="starter">Continue to checkout</button>
             </li>
             <li class="out-of-credit-plan out-of-credit-plan--featured">
               <span class="out-of-credit-plan__badge">Popular</span>
@@ -478,8 +504,8 @@
               </div>
               <p class="out-of-credit-plan__price"><span class="out-of-credit-plan__amount">$9.99</span></p>
               <p class="out-of-credit-plan__note">About $0.40 per scan</p>
-              <button type="button" class="out-of-credit-plan__btn out-of-credit-plan__btn--primary" data-credit-topup="25">
-                Add 25 credits (test)
+              <button type="button" class="out-of-credit-plan__btn out-of-credit-plan__btn--primary" data-credit-pack="grower">
+                Continue to checkout
               </button>
             </li>
             <li class="out-of-credit-plan">
@@ -489,7 +515,7 @@
               </div>
               <p class="out-of-credit-plan__price"><span class="out-of-credit-plan__amount">$17.99</span></p>
               <p class="out-of-credit-plan__note">About $0.36 per scan</p>
-              <button type="button" class="out-of-credit-plan__btn" data-credit-topup="50">Add 50 credits (test)</button>
+              <button type="button" class="out-of-credit-plan__btn" data-credit-pack="season">Continue to checkout</button>
             </li>
           </ul>
           <p class="out-of-credit-modal__footnote">
@@ -538,6 +564,7 @@
     <script src="../js/tile-saved-archive.js"></script>
     <script src="../js/scan-calendar.js"></script>
     <script src="../js/farm-tile-emojis.js"></script>
+    <script src="../js/app-page-load.js"></script>
     <script src="../js/dashboard.js"></script>
     <script src="../js/DiseaseClassification/disease-recommendations.js"></script>
     <script src="../js/farm-notifications.js"></script>

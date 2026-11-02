@@ -43,6 +43,8 @@
   const alertEl = () => document.getElementById("validation-alert");
   const alertTitleEl = () => document.getElementById("validation-alert-title");
   const alertMessageEl = () => document.getElementById("validation-alert-message");
+  const alertGuideEl = () => document.getElementById("validation-alert-guide");
+  const alertReasonsEl = () => document.getElementById("validation-alert-reasons");
   const alertOkEl = () => document.getElementById("validation-alert-ok");
   const uploadZone = () => document.getElementById("scan-upload-zone");
 
@@ -162,10 +164,48 @@
     el.hidden = true;
   }
 
+  function primaryInvalidReason(verdict) {
+    if (!verdict?.detectedClass) return "quality";
+    if (isRejectedClass(verdict.detectedClass)) return "not-leaf";
+    const conf = Number(verdict.confidence);
+    if (Number.isFinite(conf) && conf < config.minConfidence) return "quality";
+    return "not-leaf";
+  }
+
+  function showInvalidImageAlert(_detailMessage, verdict) {
+    const el = alertEl();
+    const titleNode = alertTitleEl();
+    const messageNode = alertMessageEl();
+    const guide = alertGuideEl();
+    const reasons = alertReasonsEl();
+    if (!el || !titleNode || !messageNode) {
+      window.alert("Invalid image.");
+      return;
+    }
+    el.classList.remove(
+      "validation-alert--success",
+      "validation-alert--warning",
+      "validation-alert--error",
+      "validation-alert--invalid-image"
+    );
+    el.classList.add("validation-alert--warning", "validation-alert--invalid-image");
+    titleNode.textContent = "Invalid Image";
+    messageNode.hidden = true;
+    messageNode.textContent = "";
+    if (guide) guide.hidden = false;
+    const match = primaryInvalidReason(verdict);
+    reasons?.querySelectorAll("li[data-reason]").forEach((item) => {
+      item.classList.toggle("validation-alert__reason--match", item.dataset.reason === match);
+    });
+    el.hidden = false;
+    alertOkEl()?.focus();
+  }
+
   function showAlert(variant, title, message) {
     const el = alertEl();
     const titleNode = alertTitleEl();
     const messageNode = alertMessageEl();
+    const guide = alertGuideEl();
     if (!el || !titleNode || !messageNode) {
       window.alert(message);
       return;
@@ -173,11 +213,14 @@
     el.classList.remove(
       "validation-alert--success",
       "validation-alert--warning",
-      "validation-alert--error"
+      "validation-alert--error",
+      "validation-alert--invalid-image"
     );
     el.classList.add(`validation-alert--${variant}`);
     titleNode.textContent = title;
+    messageNode.hidden = false;
     messageNode.textContent = message;
+    if (guide) guide.hidden = true;
     el.hidden = false;
     alertOkEl()?.focus();
   }
@@ -235,7 +278,7 @@
       if (verdict.isTomato) {
         classifying = startClassification(file, loadToken);
       } else if (config.strictValidation) {
-        showAlert("warning", "Not a tomato leaf", verdict.message);
+        showInvalidImageAlert(verdict.message, verdict);
         window.TomatoInsightScan?.setClassificationScores?.({});
       } else {
         showAlert(

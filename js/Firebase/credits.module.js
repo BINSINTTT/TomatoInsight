@@ -3,13 +3,25 @@
  *   users/{uid}.credits  { balance, signupGranted, profileBonusGranted, updatedAt }
  *
  * New accounts receive 10 credits. Existing accounts receive those 10 the next
- * time they sign in. Completing all six farm setup steps adds 5 once. Saving a
- * successful scan (Save Info) spends 1. Failed scans do not.
+ * time they sign in. Completing all six farm setup steps and clicking Update
+ * profile adds 5 once. Saving a successful scan (Save Info) spends 1. Failed
+ * scans do not.
  */
 import { getApps } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 import { isFarmSetupComplete } from "../farm-setup-status.module.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, runTransaction, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  collection,
+  runTransaction,
+  onSnapshot,
+  setDoc,
+} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
 export const SIGNUP_CREDITS = 10;
 export const PROFILE_BONUS_CREDITS = 5;
@@ -19,7 +31,6 @@ const LOCAL_KEY = "tomatoInsight.credits";
 const PROFILE_BONUS_NOTICE_KEY = "tomatoInsight.profileBonusNotice";
 const SIGNUP_TOAST_SHOWN_PREFIX = "tomatoInsight.creditToast.signup10.";
 const PROFILE_TOAST_SHOWN_PREFIX = "tomatoInsight.creditToast.profile5.";
-const PROFILE_BONUS_GRANT_TOAST_PREFIX = "tomatoInsight.creditToast.profileBonusGrant.";
 const creditToastHandled = new Set();
 
 let cachedUid = null;
@@ -27,6 +38,72 @@ let cachedBalance = null;
 let cachedProfileBonusGranted = false;
 let creditsLoaded = false;
 let stopCreditsWatch = null;
+/** Resolves when Firestore credits are synced (or local cache is applied). */
+let creditsHydratePromise = null;
+
+function creditsAreReady() {
+  return creditsLoaded && cachedBalance != null;
+}
+
+function whenCreditsReady() {
+  if (creditsAreReady()) return Promise.resolve();
+  if (creditsHydratePromise) return creditsHydratePromise;
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("tomatoInsight:creditsChanged", onCreditsChanged);
+      resolve();
+    };
+    const onCreditsChanged = () => {
+      if (creditsAreReady()) finish();
+    };
+    window.addEventListener("tomatoInsight:creditsChanged", onCreditsChanged);
+    window.setTimeout(finish, 15000);
+  });
+}
+
+function applyCreditsFromLocalCache(uid) {
+  if (!uid) return false;
+  if (creditsAreReady() && cachedUid === uid) return true;
+  const cached = readCache(uid);
+  if (!cached || !Number.isFinite(Number(cached.balance))) return false;
+  publish(
+    uid,
+    {
+      signupGranted: Boolean(cached.signupGranted),
+      profileBonusGranted: Boolean(cached.profileBonusGranted),
+      balance: Math.max(0, Math.floor(Number(cached.balance))),
+      updatedAt: cached.updatedAt || null,
+    },
+    { fromCache: true }
+  );
+  return true;
+}
+
+function startCreditsHydrate(uid, profile) {
+  if (!uid) {
+    creditsHydratePromise = Promise.resolve();
+    return creditsHydratePromise;
+  }
+
+  const fromCache = applyCreditsFromLocalCache(uid);
+
+  const syncPromise = ensureAccountCredits(uid, profile).catch((err) => {
+    console.warn("[TomatoInsight] Credit sync failed.", err);
+    return null;
+  });
+
+  if (fromCache || creditsAreReady()) {
+    creditsHydratePromise = Promise.resolve();
+    void syncPromise;
+    return creditsHydratePromise;
+  }
+
+  creditsHydratePromise = syncPromise;
+  return creditsHydratePromise;
+}
 
 /** @deprecated Use isFarmSetupComplete from farm-setup-status.module.js */
 export function isProfileComplete(profile) {
@@ -87,14 +164,14 @@ function normalizeNode(current) {
   return node;
 }
 
-export function applyCreditGrants(current, profile) {
+export function applyCreditGrants(current, profile, options = {}) {
   const node = normalizeNode(current);
   let profileBonusJustGranted = false;
   if (!node.signupGranted) {
     node.balance += SIGNUP_CREDITS;
     node.signupGranted = true;
   }
-  if (isFarmSetupComplete(profile) && !node.profileBonusGranted) {
+  if (options.grantProfileBonus && isFarmSetupComplete(profile) && !node.profileBonusGranted) {
     node.balance += PROFILE_BONUS_CREDITS;
     node.profileBonusGranted = true;
     profileBonusJustGranted = true;
@@ -118,10 +195,6 @@ function rememberProfileBonusNotice() {
   }
 }
 
-function profileBonusGrantToastAlreadyShown(uid) {
-  return creditToastWasShown(PROFILE_BONUS_GRANT_TOAST_PREFIX, uid);
-}
-
 export function takeProfileBonusNotice() {
   try {
     if (sessionStorage.getItem(PROFILE_BONUS_NOTICE_KEY) !== "1") return false;
@@ -140,17 +213,6 @@ function publish(uid, record, extra = {}) {
   writeCache(uid, record);
   paintCredits();
   const profileBonusJustGranted = Boolean(extra.profileBonusJustGranted);
-  if (profileBonusJustGranted && !profileBonusGrantToastAlreadyShown(uid)) {
-    rememberCreditToastShown(PROFILE_BONUS_GRANT_TOAST_PREFIX, uid);
-    rememberProfileBonusNotice();
-    const balanceAfter = Number(record.balance) || 0;
-    window.setTimeout(
-      () => showProfileBonusAddedToast(PROFILE_BONUS_CREDITS, balanceAfter),
-      80
-    );
-  } else if (record.profileBonusGranted && !profileBonusGrantToastAlreadyShown(uid)) {
-    rememberCreditToastShown(PROFILE_BONUS_GRANT_TOAST_PREFIX, uid);
-  }
   window.dispatchEvent(
     new CustomEvent("tomatoInsight:creditsChanged", {
       detail: {
@@ -367,7 +429,7 @@ function maybeShowCreditWelcomeToasts(uid, result) {
       mountCreditToast({
         variant: "accent",
         title: "Earn 5 more credits",
-        text: "Finish all six farm setup steps on your profile to unlock 5 additional scan credits.",
+        text: "Finish all six farm setup steps, then click Update profile to add 5 extra scan credits.",
         icon: "check",
         autoHideMs: 9000,
       }),
@@ -390,7 +452,7 @@ function paintCredits() {
   if (hintEl) {
     const showHint = !cachedProfileBonusGranted;
     hintEl.hidden = !showHint;
-    hintEl.textContent = showHint ? "Complete farm setup for 5 more" : "";
+    hintEl.textContent = showHint ? "Update profile after farm setup for 5 more" : "";
   }
 }
 
@@ -402,7 +464,7 @@ function watchCredits(uid) {
     if (currentUid() !== uid) return;
     const value = snap.data()?.credits;
     if (!value || typeof value !== "object") return;
-    publish(uid, normalizeNode(value));
+    publish(uid, normalizeNode(value), { fromWatch: true });
   });
 }
 
@@ -413,6 +475,7 @@ export function stopWatchingCredits() {
   cachedBalance = null;
   cachedProfileBonusGranted = false;
   creditsLoaded = false;
+  creditsHydratePromise = null;
   paintCredits();
 }
 
@@ -425,7 +488,7 @@ export function trySyncFarmSetupCredits() {
   });
 }
 
-export async function ensureAccountCredits(uid, profile) {
+export async function ensureAccountCredits(uid, profile, options = {}) {
   const db = firestoreDb();
   if (!db || !uid) {
     const err = new Error("Firestore is not available.");
@@ -434,21 +497,42 @@ export async function ensureAccountCredits(uid, profile) {
   }
   const profileRecord = { ...readLocalProfile(uid), ...(profile || {}) };
   const userRef = doc(db, "users", uid);
-  const beforeSnap = await getDoc(userRef);
-  const hadProfileBonus = Boolean(beforeSnap.data()?.credits?.profileBonusGranted);
-  const hadSignupGranted = Boolean(beforeSnap.data()?.credits?.signupGranted);
+  const initialSnap = await getDoc(userRef);
+  const current = initialSnap.exists() ? initialSnap.data()?.credits : null;
+  const previous = normalizeNode(current);
+  const next = applyCreditGrants(current, profileRecord, options);
+  const hadSignupGranted = Boolean(previous.signupGranted);
 
+  if (initialSnap.exists() && sameCreditNode(previous, next.node)) {
+    publish(uid, previous);
+    maybeShowCreditWelcomeToasts(uid, {
+      balance: previous.balance,
+      profileBonusGranted: previous.profileBonusGranted,
+      profileBonusJustGranted: false,
+      signupCreditsJustGranted: false,
+    });
+    watchCredits(uid);
+    return {
+      balance: previous.balance,
+      profileBonusGranted: previous.profileBonusGranted,
+      profileBonusJustGranted: false,
+      signupCreditsJustGranted: false,
+    };
+  }
+
+  let grantedProfileBonusInTx = false;
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(userRef);
-    const current = snap.exists() ? snap.data()?.credits : null;
-    const next = applyCreditGrants(current, profileRecord);
-    const previous = normalizeNode(current);
-    if (snap.exists() && sameCreditNode(previous, next.node)) return;
+    const txCurrent = snap.exists() ? snap.data()?.credits : null;
+    const txNext = applyCreditGrants(txCurrent, profileRecord, options);
+    const txPrevious = normalizeNode(txCurrent);
+    grantedProfileBonusInTx = Boolean(options.grantProfileBonus && txNext.profileBonusJustGranted);
+    if (snap.exists() && sameCreditNode(txPrevious, txNext.node)) return;
     tx.set(
       userRef,
       {
         credits: {
-          ...next.node,
+          ...txNext.node,
           updatedAt: new Date().toISOString(),
         },
       },
@@ -463,7 +547,7 @@ export async function ensureAccountCredits(uid, profile) {
     err.code = "ti/credits-missing";
     throw err;
   }
-  const profileBonusJustGranted = !hadProfileBonus && stored.profileBonusGranted;
+  const profileBonusJustGranted = grantedProfileBonusInTx;
   const signupCreditsJustGranted = !hadSignupGranted && stored.signupGranted;
   publish(uid, stored, { profileBonusJustGranted, signupCreditsJustGranted });
   maybeShowCreditWelcomeToasts(uid, {
@@ -568,8 +652,26 @@ export async function spendForSuccessfulScan() {
   return { ok: true, balance: stored.balance };
 }
 
-/** Test top-up — adds credits in Firestore without payment (replace with checkout later). */
-export async function addTopUpCredits(amount) {
+function isFirestorePermissionDenied(err) {
+  const code = String(err?.code || "");
+  return code === "permission-denied" || code.includes("permission");
+}
+
+function demoCheckoutErrorMessage(err) {
+  if (isFirestorePermissionDenied(err)) {
+    return (
+      "Firestore blocked saving the payment row. In Firebase Console → Firestore → Rules, " +
+      "add the payments block from firestore.payments.rules.txt in this project, publish, then try again."
+    );
+  }
+  return "Could not complete the demo payment. Try again.";
+}
+
+/**
+ * Adds credits after a completed checkout. Updates `users/{uid}.credits`, then
+ * writes a row to the top-level `payments` collection for purchase history.
+ */
+export async function addTopUpCredits(amount, pack = {}) {
   const uid = currentUid();
   if (!uid) {
     return { ok: false, code: "signed-out", error: "Sign in to add credits." };
@@ -596,7 +698,11 @@ export async function addTopUpCredits(amount) {
   }
 
   const userRef = doc(db, "users", uid);
+  const paymentRef = doc(collection(db, "payments"));
+  const authUser = getApps().length ? getAuth(getApps()[0]).currentUser : null;
   let storedAfterTopUp = null;
+  let balanceBefore = 0;
+  const now = new Date();
   try {
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(userRef);
@@ -606,28 +712,75 @@ export async function addTopUpCredits(amount) {
         err.code = "ti/credits-missing";
         throw err;
       }
+      balanceBefore = node.balance;
       storedAfterTopUp = {
         ...node,
         balance: node.balance + credits,
-        updatedAt: new Date().toISOString(),
+        updatedAt: now.toISOString(),
       };
       tx.set(userRef, { credits: storedAfterTopUp }, { merge: true });
     });
   } catch (err) {
-    console.warn("[TomatoInsight] Test top-up failed.", err);
-    return { ok: false, code: "credits-unavailable", error: "Could not add credits. Try again." };
+    console.warn("[TomatoInsight] Demo checkout failed.", err);
+    return {
+      ok: false,
+      code: "credits-unavailable",
+      error: demoCheckoutErrorMessage(err),
+    };
+  }
+
+  const paymentRecord = {
+    uid,
+    email: authUser?.email || "",
+    packId: String(pack.packId || pack.id || "custom"),
+    packName: String(pack.packName || pack.name || `${credits} credits`),
+    credits,
+    listPriceUsd: Number(pack.listPriceUsd) || 0,
+    amountChargedUsd: 0,
+    currency: "USD",
+    status: "paid",
+    method: "demo",
+    isDemo: true,
+    createdAt: now.toISOString(),
+    createdAtMs: now.getTime(),
+    balanceBefore,
+    balanceAfter: storedAfterTopUp.balance,
+  };
+
+  let paymentSaved = true;
+  let paymentSaveError = null;
+  try {
+    await setDoc(paymentRef, paymentRecord);
+  } catch (err) {
+    paymentSaved = false;
+    paymentSaveError = err;
+    console.warn("[TomatoInsight] Demo payment row not saved.", err);
   }
 
   const stored = normalizeNode(storedAfterTopUp);
   publish(uid, stored);
+  const paymentRulesHint = paymentSaveError && isFirestorePermissionDenied(paymentSaveError);
   mountCreditToast({
     variant: "grant",
     title: `+${credits} credits added`,
-    text: remainingCreditsLine(stored.balance) || "Test top-up applied to your account.",
+    text: paymentRulesHint
+      ? "Credits updated. Add Firestore payments rules (see HOW_TO_RUN.md) to save purchase history."
+      : remainingCreditsLine(stored.balance) ||
+        (paymentSaved
+          ? "Demo payment applied to your account."
+          : "Credits added, but the purchase row could not be saved."),
     icon: "check",
-    autoHideMs: 6500,
+    autoHideMs: paymentRulesHint ? 9000 : 6500,
   });
-  return { ok: true, balance: stored.balance, added: credits };
+  return {
+    ok: true,
+    balance: stored.balance,
+    added: credits,
+    paymentId: paymentSaved ? paymentRef.id : null,
+    payment: paymentSaved ? { id: paymentRef.id, ...paymentRecord } : null,
+    paymentSaved,
+    paymentRulesHint,
+  };
 }
 
 export async function refundScanCredit() {
@@ -676,15 +829,15 @@ export function canAttemptScan() {
 }
 
 function restoreCachedBalance() {
-  const uid = currentUid();
-  if (!uid) return;
-  const cached = readCache(uid);
-  if (!cached || !Number.isFinite(Number(cached.balance))) return;
-  cachedUid = uid;
-  cachedBalance = Math.max(0, Math.floor(Number(cached.balance)));
-  cachedProfileBonusGranted = Boolean(cached.profileBonusGranted);
-  creditsLoaded = true;
-  paintCredits();
+  applyCreditsFromLocalCache(currentUid());
+}
+
+function bindCreditsToAuth() {
+  const apps = getApps();
+  if (!apps.length) return;
+  onAuthStateChanged(getAuth(apps[0]), (user) => {
+    if (user?.uid) applyCreditsFromLocalCache(user.uid);
+  });
 }
 
 let outOfCreditModalBound = false;
@@ -694,37 +847,22 @@ function bindCreditTopUpButtons() {
   if (creditTopUpClickBound) return;
   creditTopUpClickBound = true;
 
-  document.addEventListener("click", async (event) => {
-    const btn = event.target instanceof Element ? event.target.closest("[data-credit-topup]") : null;
+  document.addEventListener("click", (event) => {
+    const btn = event.target instanceof Element ? event.target.closest("[data-credit-pack], [data-credit-topup]") : null;
     if (!btn || !(btn instanceof HTMLButtonElement) || btn.disabled) return;
-
-    const amount = Number.parseInt(btn.getAttribute("data-credit-topup") || "", 10);
-    if (!Number.isFinite(amount) || amount < 1) return;
-
     event.preventDefault();
-    const original = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = "Adding…";
-
-    try {
-      const result = await addTopUpCredits(amount);
-      if (result.ok) {
-        btn.textContent = "Added!";
-        hideOutOfCreditModal();
-        window.setTimeout(() => {
-          btn.textContent = original;
-          btn.disabled = false;
-        }, 1200);
-        return;
-      }
-      showCreditToast(result.error || "Could not add credits.", "info");
-    } catch (err) {
-      console.warn("[TomatoInsight] Top-up button failed.", err);
-      showCreditToast("Could not add credits. Try again.", "info");
+    const packId = btn.getAttribute("data-credit-pack");
+    const amount = Number.parseInt(btn.getAttribute("data-credit-topup") || "", 10);
+    if (window.TomatoInsightPayments?.openCheckout) {
+      window.TomatoInsightPayments.openCheckout(packId || amount);
+      return;
     }
-
-    btn.textContent = original;
-    btn.disabled = false;
+    if (Number.isFinite(amount) && amount > 0) {
+      addTopUpCredits(amount).then((result) => {
+        if (result.ok) hideOutOfCreditModal();
+        else showCreditToast(result.error || "Could not add credits.", "info");
+      });
+    }
   });
 }
 
@@ -784,6 +922,8 @@ window.TomatoInsightCredits = {
   getBalance() {
     return creditsLoaded ? cachedBalance : null;
   },
+  whenReady: whenCreditsReady,
+  isReady: creditsAreReady,
   shouldShowProfileCreditReminder() {
     if (!creditsLoaded) return false;
     return !cachedProfileBonusGranted;
@@ -795,14 +935,16 @@ window.TomatoInsightCredits = {
   hideOutOfCreditModal,
 };
 
+bindCreditsToAuth();
 restoreCachedBalance();
 bindCreditTopUpButtons();
 window.addEventListener("tomatoInsight:userDataReady", () => {
   const uid = currentUid();
-  if (!uid) return;
-  ensureAccountCredits(uid, readLocalProfile(uid)).catch((err) => {
-    console.warn("[TomatoInsight] Credit sync failed.", err);
-  });
+  if (!uid) {
+    creditsHydratePromise = Promise.resolve();
+    return;
+  }
+  startCreditsHydrate(uid, readLocalProfile(uid));
 });
 window.addEventListener("tomatoInsight:userDataCleared", () => {
   stopWatchingCredits();

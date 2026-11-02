@@ -614,6 +614,54 @@ body.page-monitoring .page-panel {
   }
 }
 
+@media (max-width: 900px) {
+  html:has(body.page-monitoring) {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body.page-monitoring,
+  body.page-monitoring .viewport,
+  body.page-monitoring .dashboard-shell {
+    height: 100%;
+    min-height: 0;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  body.page-monitoring .main-panel {
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  body.page-monitoring .page-panel {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .monitor-tabs {
+    display: flex;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .monitor-scans,
+  .monitor-scans--single {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: stretch;
+  }
+
+  .monitor-scan,
+  .monitor-scans--week4 .monitor-scan {
+    width: 100%;
+    max-width: none;
+  }
+}
+
 @media (max-width: 640px) {
   .monitor-stats {
     grid-template-columns: 1fr;
@@ -621,5 +669,11 @@ body.page-monitoring .page-panel {
 
   .monitor-chart__inner {
     height: 12rem;
+  }
+
+  .monitor-chart__label {
+    font-size: 0.65rem;
+    text-align: center;
+    overflow-wrap: anywhere;
   }
 }

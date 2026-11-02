@@ -182,7 +182,7 @@ def _build_user_message(scores: dict[str, float], top: dict[str, Any]) -> str:
     return json.dumps(payload, indent=2)
 
 
-SYSTEM_PROMPT = """You are an advisory assistant for Tomato Insight, a tomato farm leaf-scanning app.
+SYSTEM_PROMPT = """You are an advisory assistant for TomatoInsight, a tomato farm leaf-scanning app.
 You receive JSON with model confidence scores and trusted_facts (curated agronomy text).
 Respond with ONLY valid JSON (no markdown fences) matching this schema:
 {

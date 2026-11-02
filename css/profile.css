@@ -35,64 +35,6 @@
   gap: 20px;
 }
 
-.profile-load {
-  position: absolute;
-  inset: 0;
-  z-index: 30;
-  display: grid;
-  place-items: center;
-  min-height: min(70vh, 640px);
-  background: var(--bg);
-  transition: opacity 0.28s ease, visibility 0.28s ease;
-}
-
-.profile-wrap:not(.profile-wrap--loading) .profile-load {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.profile-load__panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 28px 32px;
-  border-radius: 18px;
-  background: var(--card);
-  box-shadow: var(--shadow);
-}
-
-.profile-load__ring {
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 50%;
-  border: 3px solid var(--line);
-  border-top-color: var(--accent);
-  animation: profile-load-spin 0.75s linear infinite;
-}
-
-.profile-load__text {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-@keyframes profile-load-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .profile-load__ring {
-    animation: none;
-    border-top-color: var(--accent);
-    opacity: 0.85;
-  }
-}
-
 .profile-top {
   display: flex;
   justify-content: space-between;
@@ -657,27 +599,45 @@ button.profile-calendar__day:hover {
   background: var(--field);
 }
 
+button.profile-calendar__day.profile-calendar__day--today,
 .profile-calendar__day--today {
   background: var(--navy);
   color: #fff;
   font-weight: 700;
 }
 
+button.profile-calendar__day.profile-calendar__day--today:hover {
+  background: var(--navy);
+  color: #fff;
+}
+
 .profile-calendar__day--anchor {
   box-shadow: inset 0 0 0 2px var(--ok);
 }
 
+button.profile-calendar__day.profile-calendar__day--due,
 .profile-calendar__day--due {
   background: var(--ok-soft);
   color: var(--ok);
   font-weight: 700;
 }
 
+button.profile-calendar__day.profile-calendar__day--due:hover {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+button.profile-calendar__day.profile-calendar__day--selected,
 .profile-calendar__day--selected {
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 700;
   outline: 1.5px solid var(--accent);
+}
+
+button.profile-calendar__day.profile-calendar__day--selected:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .profile-calendar__day--empty {
@@ -774,21 +734,54 @@ button.profile-calendar__day:hover {
 
 @media (max-width: 760px) {
   .main-panel--profile-layout {
-    padding: 20px 16px 40px;
+    padding: 16px 14px 28px;
   }
 
-  .profile-form__row,
-  .profile-form__row--three {
+  .profile-top h1 {
+    font-size: 1.55rem;
+  }
+
+  .profile-form__row {
     grid-template-columns: 1fr;
+  }
+
+  .profile-form__row--three {
+    grid-template-columns: minmax(0, 1fr) 3rem minmax(0, 1fr);
+    gap: 8px;
   }
 
   .profile-hero {
     grid-template-columns: 1fr;
     justify-items: start;
+    gap: 16px;
+  }
+
+  .profile-hero__stats,
+  .profile-hero__actions {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .profile-hero__stats {
+    flex-wrap: wrap;
+  }
+
+  .profile-stat {
+    flex: 1 1 6.5rem;
+    min-width: 0;
+  }
+
+  .profile-hero__actions .profile-btn {
+    flex: 1 1 8rem;
+    justify-content: center;
   }
 
   .profile-step {
     flex-wrap: wrap;
+  }
+
+  .profile-card {
+    padding: 16px;
   }
 }
 

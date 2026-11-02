@@ -328,3 +328,21 @@
   font-size: 0.6875rem;
   color: var(--text-secondary);
 }
+
+@media (max-width: 640px) {
+  .scan-detail {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .scan-detail__panel {
+    width: 100%;
+    max-height: min(92dvh, 100%);
+    border-radius: 1.15rem 1.15rem 0 0;
+  }
+
+  .scan-result-row {
+    grid-template-columns: 4.6rem minmax(0, 1fr) auto;
+    gap: 0.35rem 0.4rem;
+  }
+}

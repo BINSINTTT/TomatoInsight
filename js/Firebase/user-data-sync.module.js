@@ -11,6 +11,8 @@
  *     saved scan, scores, week history, photo
  *   users/{uid}/deletions/{id}
  *     removed plant records shown in History
+ *   payments/{paymentId}
+ *     demo (and later paid) top-ups, queried separately from users.credits
  */
 import { getApps } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";

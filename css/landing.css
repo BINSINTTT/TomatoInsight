@@ -34,6 +34,13 @@
 
 .landing-page {
   scroll-padding-top: 5.5rem;
+  overflow-x: hidden;
+}
+
+@media (max-width: 767.98px) {
+  .landing-page .stats-band .stat-item {
+    padding: 28px 14px;
+  }
 }
 
 .landing-page section[id] {
@@ -83,6 +90,21 @@
   max-width: none;
   height: auto;
   margin: 0;
+}
+
+/* Wordmark on landing (theme .hw-logo .dot is legacy red-only). */
+.landing-page .ti-brand__tomato {
+  color: var(--clr-primary);
+}
+
+.landing-page .ti-brand__insight {
+  color: var(--clr-secondary);
+}
+
+/* Footer brand — theme .footer-hw a mutes link text; color the wordmark spans only. */
+.landing-page .footer-hw a.hw-logo,
+.landing-page .footer-hw a.hw-logo:hover {
+  color: inherit;
 }
 
 /* .btn-cta is authored for <button>; this page uses an anchor. */

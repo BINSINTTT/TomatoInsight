@@ -21,7 +21,7 @@
   function formatText() {
     const data = collect();
     const lines = [
-      "Tomato Insight — local storage snapshot",
+      "TomatoInsight — local storage snapshot",
       "Updated: " + new Date().toISOString(),
       "Open this site at: " + location.origin,
       "",

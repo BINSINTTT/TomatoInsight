@@ -146,9 +146,19 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
+    match /payments/{paymentId} {
+      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.method == "demo"
+        && request.resource.data.amountChargedUsd == 0;
+      allow update, delete: if false;
+    }
   }
 }
 ```
+
+Demo checkout on **Credit plans** writes to the `payments` collection. Without the block above, **Pay $0 (demo)** fails with a Firestore `permission-denied` error.
 
 On sign-in, the app downloads that farmer’s account, layout, tiles, and plant names from Firestore into the browser cache, then uploads changes when you save layout, scans, names, or profile. **Sign-out saves the farm to Firestore first**, then clears farm data from this browser so the next account does not see the previous user’s tiles. After log in again, the grid and saved tile info reload from `users/{uid}`.
 

@@ -8,14 +8,38 @@
     if (label) link.setAttribute("title", label);
   });
 
+  const mobileNavQuery = window.matchMedia("(max-width: 900px)");
+
+  function isMobileNav() {
+    return mobileNavQuery.matches;
+  }
+
+  function setMobileNav(open) {
+    root.classList.toggle("mobile-nav-open", open);
+    if (!button) return;
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+    button.setAttribute("aria-label", open ? "Close page menu" : "Open page menu");
+  }
+
   function syncButton() {
     if (!button) return;
+    if (isMobileNav()) {
+      setMobileNav(root.classList.contains("mobile-nav-open"));
+      return;
+    }
+    root.classList.remove("mobile-nav-open");
     const collapsed = root.classList.contains("sidebar-collapsed");
     button.setAttribute("aria-expanded", collapsed ? "false" : "true");
     button.setAttribute("aria-label", collapsed ? "Show sidebar labels" : "Hide sidebar labels");
   }
 
-  button?.addEventListener("click", () => {
+  button?.addEventListener("click", (event) => {
+    if (isMobileNav()) {
+      event.preventDefault();
+      event.stopPropagation();
+      setMobileNav(!root.classList.contains("mobile-nav-open"));
+      return;
+    }
     const collapsed = !root.classList.contains("sidebar-collapsed");
     root.classList.toggle("sidebar-collapsed", collapsed);
     try {
@@ -25,6 +49,23 @@
     }
     syncButton();
   });
+
+  document.addEventListener("click", (event) => {
+    if (!isMobileNav() || !root.classList.contains("mobile-nav-open")) return;
+    if (button?.contains(event.target)) return;
+    if (event.target.closest && event.target.closest(".nav")) return;
+    setMobileNav(false);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && root.classList.contains("mobile-nav-open")) {
+      setMobileNav(false);
+    }
+  });
+
+  if (typeof mobileNavQuery.addEventListener === "function") {
+    mobileNavQuery.addEventListener("change", syncButton);
+  }
 
   syncButton();
 

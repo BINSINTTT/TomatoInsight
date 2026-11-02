@@ -397,9 +397,15 @@
     archive.bindStorageRefresh(render);
   }
 
+  function start() {
+    const boot = window.TomatoInsightAppPageLoad?.boot;
+    const run = boot ? boot({ message: "Loading monitoring…" }) : Promise.resolve();
+    run.then(() => init());
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("DOMContentLoaded", start);
   } else {
-    init();
+    start();
   }
 })();

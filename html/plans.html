@@ -13,7 +13,7 @@
         }
       } catch (e) {}
     </script>
-    <title>Tomato Insight — Credit plans</title>
+    <title>TomatoInsight — Credit plans</title>
     <link rel="icon" href="../img/LogoTomatoInsight.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -28,10 +28,10 @@
   </head>
   <body class="page-plans">
     <div class="viewport">
-      <div class="dashboard-shell" role="application" aria-label="Tomato Insight">
+      <div class="dashboard-shell" role="application" aria-label="TomatoInsight">
         <aside class="sidebar" aria-label="Main navigation">
           <div class="sidebar__top">
-            <a class="brand" href="index.html" aria-label="Tomato Insight home">
+            <a class="brand" href="index.html" aria-label="TomatoInsight home">
               <span class="brand__mark">
                 <img
                   class="brand__mark-img"
@@ -43,7 +43,7 @@
                 />
               </span>
               <span class="brand__text">
-                <span class="brand__name">Tomato Insight</span>
+                <span class="brand__name ti-brand"><span class="ti-brand__tomato">Tomato</span><span class="ti-brand__insight">Insight</span></span>
                 <span class="brand__tagline">Farm dashboard</span>
               </span>
             </a>
@@ -99,11 +99,17 @@
 
         <div class="content-frame">
           <main class="main-panel">
+            <div class="app-page-load" id="app-page-load" data-app-load-message="Loading credit plans…" aria-live="polite" aria-busy="true">
+              <div class="app-page-load__panel">
+                <div class="app-page-load__ring" aria-hidden="true"></div>
+                <p class="app-page-load__text">Loading credit plans…</p>
+              </div>
+            </div>
             <header class="plans-top">
               <div>
                 <h1>Credit plans</h1>
                 <p class="plans-top__sub">
-                  Each saved scan uses 1 credit. Plan buttons add credits instantly for testing (no payment yet).
+                  Each saved scan uses 1 credit. Checkout is a free demo — you pay $0 and a payment record is stored in Firestore.
                 </p>
               </div>
               <div class="plans-balance" aria-live="polite">
@@ -124,7 +130,7 @@
                   </div>
                   <p class="credit-plan__price"><span class="credit-plan__amount">$4.99</span></p>
                   <p class="credit-plan__note">About $0.50 per scan</p>
-                  <button type="button" class="credit-plan__btn" data-credit-topup="10">Add 10 credits (test)</button>
+                  <button type="button" class="credit-plan__btn" data-credit-pack="starter">Continue to checkout</button>
                 </li>
                 <li class="credit-plan credit-plan--featured">
                   <span class="credit-plan__badge">Popular</span>
@@ -134,8 +140,8 @@
                   </div>
                   <p class="credit-plan__price"><span class="credit-plan__amount">$9.99</span></p>
                   <p class="credit-plan__note">About $0.40 per scan</p>
-                  <button type="button" class="credit-plan__btn credit-plan__btn--primary" data-credit-topup="25">
-                    Add 25 credits (test)
+                  <button type="button" class="credit-plan__btn credit-plan__btn--primary" data-credit-pack="grower">
+                    Continue to checkout
                   </button>
                 </li>
                 <li class="credit-plan">
@@ -145,13 +151,20 @@
                   </div>
                   <p class="credit-plan__price"><span class="credit-plan__amount">$17.99</span></p>
                   <p class="credit-plan__note">About $0.36 per scan</p>
-                  <button type="button" class="credit-plan__btn" data-credit-topup="50">Add 50 credits (test)</button>
+                  <button type="button" class="credit-plan__btn" data-credit-pack="season">Continue to checkout</button>
                 </li>
               </ul>
               <p class="plans-footnote">
-                New accounts receive 10 free credits. Complete all six farm setup steps on your profile for 5 bonus
-                credits (one time).
+                Demo checkout never charges a card. Each successful Pay $0 writes a row in the Firestore
+                <code>payments</code> collection and adds the pack credits to your balance.
               </p>
+            </section>
+
+            <section class="plans-card plans-card--history" aria-labelledby="plans-payments-title">
+              <p class="plans-card__eyebrow">Purchases</p>
+              <h2 class="plans-card__title" id="plans-payments-title">Demo payment history</h2>
+              <p class="plans-card__intro" id="plans-payment-empty">No demo payments yet. Complete checkout above to create one.</p>
+              <ul class="plans-payment-list" id="plans-payment-list"></ul>
             </section>
 
             <a class="plans-back" href="profile.html">← Back to profile</a>
@@ -159,6 +172,7 @@
         </div>
       </div>
     </div>
+    <script src="../js/app-page-load.js"></script>
     <script type="module" src="../js/plans.module.js"></script>
     <script src="../js/sidebar-toggle.js"></script>
   </body>

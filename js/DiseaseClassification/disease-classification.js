@@ -133,7 +133,10 @@
     );
     el.classList.add(`validation-alert--${variant || "warning"}`);
     titleNode.textContent = title;
+    messageNode.hidden = false;
     messageNode.textContent = message;
+    document.getElementById("validation-alert-guide")?.setAttribute("hidden", "");
+    el.classList.remove("validation-alert--invalid-image");
     el.hidden = false;
   }
 

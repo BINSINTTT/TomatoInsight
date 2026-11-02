@@ -340,9 +340,25 @@ html.auth-html body.auth-body {
   color: #ffffff;
 }
 
-@media (max-width: 480px) {
-  .auth-form__row--name {
+@media (max-width: 576px) {
+  html.auth-html,
+  html.auth-html body.auth-body {
+    height: auto;
+    max-height: none;
+    min-height: 100dvh;
+  }
+
+  .auth-body.auth-login-split .container {
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
+  }
+
+  .auth-password-rules--split {
     grid-template-columns: 1fr;
+  }
+
+  .auth-form__row--name {
+    grid-template-columns: minmax(0, 1fr) 2.75rem minmax(0, 1fr);
   }
 
   .auth-field__input--center {

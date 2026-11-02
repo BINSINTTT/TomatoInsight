@@ -107,9 +107,9 @@
     const heroLogin = document.getElementById("auth-hero-login");
     const heroSignup = document.getElementById("auth-hero-signup");
     const titles = {
-      login: "Tomato Insight — Log in",
-      forgot: "Tomato Insight — Reset password",
-      signup: "Tomato Insight — Sign up",
+      login: "TomatoInsight — Log in",
+      forgot: "TomatoInsight — Reset password",
+      signup: "TomatoInsight — Sign up",
     };
 
     function panelFor(name) {

@@ -2,6 +2,7 @@ import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 import { bindUserDataSync } from "../Firebase/user-data-sync.module.js";
 import "../Firebase/credits.module.js";
+import "../Firebase/payments.module.js";
 
 const config = window.TOMATO_INSIGHT_FIREBASE_CONFIG;
 const authMode = document.documentElement.getAttribute("data-auth");

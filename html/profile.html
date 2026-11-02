@@ -13,7 +13,7 @@
         }
       } catch (e) {}
     </script>
-    <title>Tomato Insight — Profile</title>
+    <title>TomatoInsight — Profile</title>
     <link rel="icon" href="../img/LogoTomatoInsight.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -27,10 +27,10 @@
   </head>
   <body>
     <div class="viewport">
-      <div class="dashboard-shell" role="application" aria-label="Tomato Insight">
+      <div class="dashboard-shell" role="application" aria-label="TomatoInsight">
         <aside class="sidebar" aria-label="Main navigation">
           <div class="sidebar__top">
-            <a class="brand" href="index.html" aria-label="Tomato Insight home">
+            <a class="brand" href="index.html" aria-label="TomatoInsight home">
               <span class="brand__mark">
                 <img
                   class="brand__mark-img"
@@ -42,7 +42,7 @@
                 />
               </span>
               <span class="brand__text">
-                <span class="brand__name">Tomato Insight</span>
+                <span class="brand__name ti-brand"><span class="ti-brand__tomato">Tomato</span><span class="ti-brand__insight">Insight</span></span>
                 <span class="brand__tagline">Farm dashboard</span>
               </span>
             </a>
@@ -98,13 +98,13 @@
 
         <div class="content-frame content-frame--profile">
           <main class="main-panel main-panel--profile-layout">
-            <div class="profile-wrap" id="profile-wrap">
-              <div class="profile-load" id="profile-load" role="status" aria-live="polite" aria-busy="false">
-                <div class="profile-load__panel">
-                  <div class="profile-load__ring" aria-hidden="true"></div>
-                  <p class="profile-load__text">Loading your profile…</p>
-                </div>
+            <div class="app-page-load" id="app-page-load" data-app-load-message="Loading your profile…" aria-live="polite" aria-busy="true">
+              <div class="app-page-load__panel">
+                <div class="app-page-load__ring" aria-hidden="true"></div>
+                <p class="app-page-load__text">Loading your profile…</p>
               </div>
+            </div>
+            <div class="profile-wrap" id="profile-wrap">
               <header class="profile-top">
                 <h1>Profile</h1>
                 <p class="profile-top__clock" id="profile-clock"></p>
@@ -157,7 +157,7 @@
                         <h2 id="profile-tasks-title">Farm setup</h2>
                         <p class="profile-card__sub" id="profile-tasks-sub">Finish these steps to start tracking plant health.</p>
                         <p class="profile-credit-reminder" id="profile-credits-reminder" hidden>
-                          Finish all six farm setup steps (including a profile photo) for
+                          Finish all six farm setup steps, then click <strong>Update profile</strong> for
                           <strong>5 additional scan credits</strong>.
                         </p>
                       </div>
@@ -173,7 +173,8 @@
                     <h2 id="profile-details">Your details</h2>
                     <p class="profile-card__sub">Changes apply across your dashboard and reports.</p>
                     <p class="profile-credit-reminder profile-credit-reminder--details" id="profile-details-credits-reminder" hidden>
-                      Farm setup must be fully complete (6 steps) to earn <strong>5 bonus scan credits</strong> (one time).
+                      After all 6 farm setup steps are done, click <strong>Update profile</strong> to earn
+                      <strong>5 bonus scan credits</strong> (one time).
                     </p>
                     <form class="profile-form" id="profile-details-form">
                       <div class="profile-form__row profile-form__row--three">
@@ -233,6 +234,7 @@
       </div>
     </div>
     <script src="../js/scan-calendar.js"></script>
+    <script src="../js/app-page-load.js"></script>
     <script type="module" src="../js/Firebase/firebase-auth.module.js"></script>
     <script type="module" src="../js/profile.module.js"></script>
     <script src="../js/sidebar-toggle.js"></script>
