@@ -26,6 +26,7 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
       window.TomatoInsightStorageSnapshot?.schedule?.();
       window.TomatoInsightUserData?.syncPlantNames?.();
+      window.TomatoInsightUserData?.notifyLocalChange?.("plant-name");
       return true;
     } catch (err) {
       console.error("[TomatoInsight] Could not save plant name:", err);

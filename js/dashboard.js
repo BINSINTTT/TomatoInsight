@@ -1028,6 +1028,7 @@
     window.TomatoInsightStorageSnapshot?.schedule?.();
     window.TomatoInsightUserData?.syncLayout?.(layout);
     window.TomatoInsightUserData?.flushFarmToCloud?.();
+    window.TomatoInsightUserData?.notifyLocalChange?.("layout");
     renderDashboard();
   }
 
@@ -1294,6 +1295,10 @@
     reloadFarmFromStorage();
   });
   window.addEventListener("tomatoInsight:userDataCleared", reloadFarmFromStorage);
+  window.addEventListener("tomatoInsight:farmDataChanged", (event) => {
+    if (event.detail?.source === "layout") return;
+    reloadFarmFromStorage();
+  });
 
   bootDashboardFromCloud();
 })();

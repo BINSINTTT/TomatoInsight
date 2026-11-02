@@ -188,5 +188,6 @@
     refresh();
   });
   window.addEventListener("tomatoInsight:scanCalendar", refresh);
+  window.addEventListener("tomatoInsight:farmDataChanged", refresh);
   window.addEventListener("focus", refresh);
 })();

@@ -30,6 +30,7 @@
     };
     localStorage.setItem(KEY, JSON.stringify(schedule));
     window.TomatoInsightUserData?.syncScanCalendar?.();
+    window.TomatoInsightUserData?.notifyLocalChange?.("scan-calendar");
     window.dispatchEvent(new CustomEvent("tomatoInsight:scanCalendar"));
     return schedule;
   }

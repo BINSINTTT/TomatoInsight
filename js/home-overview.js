@@ -49,8 +49,15 @@
 
   renderDate();
   refresh();
-  window.addEventListener("tomatoInsight:userDataReady", refresh);
+  window.addEventListener("tomatoInsight:userDataReady", (event) => {
+    const shouldRefresh = window.TomatoInsightUserData?.shouldRefreshUiForUserDataEvent?.(
+      event.detail
+    );
+    if (shouldRefresh === false) return;
+    refresh();
+  });
   window.addEventListener("tomatoInsight:userDataCleared", refresh);
+  window.addEventListener("tomatoInsight:farmDataChanged", refresh);
   window.addEventListener("storage", refresh);
   window.addEventListener("focus", () => {
     renderDate();

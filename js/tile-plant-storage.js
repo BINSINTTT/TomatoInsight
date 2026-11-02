@@ -65,6 +65,7 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
       window.TomatoInsightStorageSnapshot?.schedule?.();
       window.TomatoInsightUserData?.syncTile?.(tileNum);
+      window.TomatoInsightUserData?.notifyLocalChange?.("tile-save");
       return true;
     } catch (err) {
       console.error("[TomatoInsight] Could not save tile plant info:", err);
@@ -78,6 +79,7 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
     window.TomatoInsightStorageSnapshot?.schedule?.();
     window.TomatoInsightUserData?.syncTile?.(tileNum);
+    window.TomatoInsightUserData?.notifyLocalChange?.("tile-remove");
   }
 
   function loadDeletions() {
@@ -106,6 +108,7 @@
       localStorage.setItem(DELETIONS_KEY, JSON.stringify(next));
       window.TomatoInsightStorageSnapshot?.schedule?.();
       window.TomatoInsightUserData?.syncDeletions?.();
+      window.TomatoInsightUserData?.notifyLocalChange?.("tile-deletion");
       return true;
     } catch (err) {
       console.error("[TomatoInsight] Could not record tile deletion:", err);

@@ -252,6 +252,14 @@ function dispatchUserDataReady(uid, displayName, extra = {}) {
   );
 }
 
+/** Same-tab UI refresh after local saves (storage events only fire in other tabs). */
+function notifyLocalFarmDataChange(source = "farm") {
+  const uid = activeUid || resolveSyncUid() || "";
+  const detail = { changed: true, local: true, source };
+  window.dispatchEvent(new CustomEvent("tomatoInsight:farmDataChanged", { detail }));
+  dispatchUserDataReady(uid, window.__tomatoInsightAccountName || "", detail);
+}
+
 export function shouldRefreshUiForUserDataEvent(detail) {
   const d = detail || {};
   if (d.fromCache) return false;
@@ -587,31 +595,33 @@ function tileSavedAtMs(info) {
   return Number.isNaN(ms) ? 0 : ms;
 }
 
-/** Prefer newer saved scans; never drop local-only tiles that already have a save. */
-function mergeTileRecords(localTiles, remoteTiles) {
+/** Prefer newer saved scans. Drop plants that were deleted in Firestore. */
+function mergeTileRecords(localTiles, remoteTiles, deletions) {
   const local = localTiles && typeof localTiles === "object" ? localTiles : {};
   const remote = remoteTiles && typeof remoteTiles === "object" ? remoteTiles : {};
+  const gone = deletedTileIdsWithoutScan(remote, deletions);
   const ids = new Set([...Object.keys(local), ...Object.keys(remote)]);
   const merged = {};
   ids.forEach((id) => {
+    if (gone.has(String(id))) return;
     const left = local[id];
     const right = remote[id];
     if (left && right) {
       merged[id] = tileSavedAtMs(left) >= tileSavedAtMs(right) ? left : right;
       return;
     }
-    if (left) {
-      merged[id] = left;
+    if (right) {
+      merged[id] = right;
       return;
     }
-    if (right) merged[id] = right;
+    if (left) merged[id] = left;
   });
   return merged;
 }
 
 function applyFarmToLocal(farm, deletions) {
   const localTiles = readJson(LOCAL.tiles, {});
-  const mergedTiles = mergeTileRecords(localTiles, farm.tiles);
+  const mergedTiles = mergeTileRecords(localTiles, farm.tiles, deletions);
 
   if (layoutValid(farm.layout)) {
     writeJson(LOCAL.layout, layoutRecord(farm.layout));
@@ -629,7 +639,7 @@ function applyFarmToLocal(farm, deletions) {
 
   if (Object.keys(mergedTiles).length) {
     writeJson(LOCAL.tiles, mergedTiles);
-  } else if (!Object.keys(localTiles).length) {
+  } else {
     localStorage.removeItem(LOCAL.tiles);
   }
 
@@ -950,7 +960,7 @@ function watchUserFarm(uid) {
   const seen = { user: false, tiles: false, deletions: false };
   const apply = () => {
     if (activeUid !== uid || !seen.user || !seen.tiles || !seen.deletions) return;
-    applyCloudBundle(uid, state, { notify: false });
+    applyCloudBundle(uid, state, { notify: true });
   };
   const unsubUser = onSnapshot(
     userRef(uid),
@@ -1054,6 +1064,9 @@ function registerGlobalBridge() {
     },
     shouldRefreshUiForUserDataEvent(detail) {
       return shouldRefreshUiForUserDataEvent(detail);
+    },
+    notifyLocalChange(source) {
+      notifyLocalFarmDataChange(source);
     },
   };
 }

@@ -622,6 +622,14 @@ function initProfilePage() {
     pageBoot.then(() => refreshProfileView(user));
   });
 
+  function refreshProfileFarmPanels() {
+    const user = auth.currentUser;
+    if (!user) return;
+    const profile = loadUserProfileFromCache(user.uid, user);
+    if (profileHasDisplayableData(profile)) bindProfileHero(user, profile);
+    renderCalendar();
+  }
+
   window.addEventListener("tomatoInsight:userDataReady", (event) => {
     const user = auth.currentUser;
     if (!user) return;
@@ -629,9 +637,21 @@ function initProfilePage() {
       event.detail
     );
     if (shouldRefresh === false) return;
+    if (event.detail?.local) {
+      pageBoot.then(() => refreshProfileFarmPanels());
+      return;
+    }
     pageBoot.then(() =>
       refreshProfileView(user, { background: Boolean(event.detail?.background) })
     );
+  });
+
+  window.addEventListener("tomatoInsight:farmDataChanged", () => {
+    pageBoot.then(() => refreshProfileFarmPanels());
+  });
+  window.addEventListener("tomatoInsight:scanCalendar", () => {
+    renderCalendar();
+    setCalendarNote(calendarNoteFor(calendarApi()?.read?.()));
   });
 
   form?.addEventListener("submit", async (e) => {

@@ -88,6 +88,7 @@
     try {
       localStorage.setItem(FARM_WEEK_STORAGE_KEY, String(n));
       window.TomatoInsightUserData?.syncFarmWeek?.(n);
+      window.TomatoInsightUserData?.notifyLocalChange?.("farm-week");
     } catch {
       /* ignore */
     }
@@ -617,6 +618,7 @@
       onRefresh();
     });
     window.addEventListener("tomatoInsight:userDataCleared", onRefresh);
+    window.addEventListener("tomatoInsight:farmDataChanged", onRefresh);
   }
 
   window.TomatoInsightSavedTiles = {
