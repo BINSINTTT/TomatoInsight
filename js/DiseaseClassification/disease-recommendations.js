@@ -9,6 +9,7 @@
   };
 
   let lastTop = null;
+  let lastDetected = [];
   let lastScores = null;
   let activeTileKey = "";
   const openByTile = new Map();
@@ -169,12 +170,53 @@
   }
 
   function findTopDisease(scores) {
-    let top = { barKey: "healthy", pct: 0 };
-    BAR_KEYS.forEach((barKey) => {
-      const pct = Math.min(100, Math.max(0, Number(scores?.[barKey]) || 0));
-      if (pct > top.pct) top = { barKey, pct };
+    const detected = findDetectedMatches(scores);
+    return detected[0] || null;
+  }
+
+  /** Every score bar above 0% (diseases and healthy), highest first. */
+  function findDetectedMatches(scores) {
+    if (!scores) return [];
+    return BAR_KEYS.map((barKey) => ({
+      barKey,
+      pct: Math.min(100, Math.max(0, Number(scores[barKey]) || 0)),
+    }))
+      .filter((item) => item.pct > 0)
+      .sort((a, b) => b.pct - a.pct || BAR_KEYS.indexOf(a.barKey) - BAR_KEYS.indexOf(b.barKey));
+  }
+
+  function guidesForScores(scores) {
+    return findDetectedMatches(scores).map(({ barKey, pct }) => ({
+      ...treatmentForBarKey(barKey, pct),
+      barKey,
+      pct,
+    }));
+  }
+
+  function isHealthyGuide(guide) {
+    const key = normalizeKey(guide?.barKey || "");
+    const name = normalizeKey(guide?.diseaseName || "");
+    return key === "healthy" || name.includes("healthy");
+  }
+
+  function mergeGuidesWithTopOverride(scores, topGuide) {
+    const detected = findDetectedMatches(scores);
+    if (!detected.length) return [];
+    return detected.map((match, index) => {
+      const builtIn = {
+        ...treatmentForBarKey(match.barKey, match.pct),
+        barKey: match.barKey,
+        pct: match.pct,
+      };
+      if (index !== 0 || !topGuide || topGuide.error) return builtIn;
+      return {
+        ...builtIn,
+        ...topGuide,
+        barKey: match.barKey,
+        pct: match.pct,
+        diseaseName: topGuide.diseaseName || builtIn.diseaseName,
+      };
     });
-    return top.pct > 0 ? top : null;
   }
 
   function renderList(items, emptyMessage) {
@@ -192,30 +234,55 @@
       .replace(/"/g, "&quot;");
   }
 
-  function renderPanelContent(top, guide) {
-    const panel = document.getElementById("scan-treatment-panel");
-    if (!panel || !top || !guide) return;
-
-    const isHealthy = normalizeKey(top.barKey) === "healthy";
+  function renderGuideSectionHtml(guide, index, total) {
+    if (!guide) return "";
+    const isHealthy = isHealthyGuide(guide);
     const stepsTitle = isHealthy ? "What to do" : "Treatment steps";
-
+    const pct = Number(guide.pct);
+    const hasPct = Number.isFinite(pct) && pct > 0;
+    const eyebrow =
+      total > 1
+        ? `Detected${hasPct ? ` · ${fmtPct(pct)}%` : ""}`
+        : hasPct
+          ? `Match · ${fmtPct(pct)}%`
+          : "";
     const urgencyClass = guide.isCriticalRemoval
       ? "scan-treatment-panel__urgency scan-treatment-panel__urgency--critical"
       : "scan-treatment-panel__urgency";
 
-    panel.innerHTML = `
-      <h4 class="scan-treatment-panel__title">${escapeHtml(guide.diseaseName || (isHealthy ? "Healthy" : ""))}</h4>
-      <p class="${urgencyClass}">${escapeHtml(guide.urgencyNote)}</p>
-      <p class="scan-treatment-panel__summary">${escapeHtml(guide.summary)}</p>
-      <h5 class="scan-treatment-panel__subtitle">${stepsTitle}</h5>
-      ${renderList(guide.actionSteps, "No steps listed.")}
-      ${
-        guide.preventionTips?.length
-          ? `<h5 class="scan-treatment-panel__subtitle">Prevention</h5>${renderList(guide.preventionTips, "")}`
-          : ""
-      }
-      <p class="scan-treatment-panel__disclaimer">Guidance only — verify on the plant before treating.</p>
+    return `
+      <section class="scan-treatment-panel__disease"${index > 0 ? ' data-secondary="true"' : ""}>
+        ${eyebrow ? `<p class="scan-treatment-panel__eyebrow">${escapeHtml(eyebrow)}</p>` : ""}
+        <h4 class="scan-treatment-panel__title">${escapeHtml(
+          guide.diseaseName || (isHealthy ? "Healthy" : "")
+        )}</h4>
+        <p class="${urgencyClass}">${escapeHtml(guide.urgencyNote)}</p>
+        <p class="scan-treatment-panel__summary">${escapeHtml(guide.summary)}</p>
+        <h5 class="scan-treatment-panel__subtitle">${stepsTitle}</h5>
+        ${renderList(guide.actionSteps, "No steps listed.")}
+        ${
+          guide.preventionTips?.length
+            ? `<h5 class="scan-treatment-panel__subtitle">Prevention</h5>${renderList(guide.preventionTips, "")}`
+            : ""
+        }
+      </section>
     `;
+  }
+
+  function renderGuidesHtml(guides) {
+    const list = Array.isArray(guides) ? guides.filter(Boolean) : guides ? [guides] : [];
+    if (!list.length) return "";
+    return (
+      list.map((guide, index) => renderGuideSectionHtml(guide, index, list.length)).join("") +
+      `<p class="scan-treatment-panel__disclaimer">Guidance only — verify on the plant before treating.</p>`
+    );
+  }
+
+  function renderPanelContent(guides) {
+    const panel = document.getElementById("scan-treatment-panel");
+    const html = renderGuidesHtml(guides);
+    if (!panel || !html) return;
+    panel.innerHTML = html;
     panel.hidden = false;
   }
 
@@ -258,7 +325,7 @@
     const panel = document.getElementById("scan-treatment-panel");
     if (!panel || !top) return;
     panel.innerHTML = `
-      <p class="scan-treatment-panel__eyebrow">Top match · ${top.pct}% · Groq</p>
+      <p class="scan-treatment-panel__eyebrow">Top match · ${fmtPct(top.pct)}% · Groq</p>
       <h4 class="scan-treatment-panel__title">${escapeHtml(title)}</h4>
       <p class="scan-treatment-panel__urgency scan-treatment-panel__urgency--critical">${escapeHtml(
         detail || "Check server/.env (GROQ_API_KEY), restart Flask, and use http://127.0.0.1:8765/."
@@ -268,15 +335,23 @@
     panel.hidden = false;
   }
 
-  function renderPanel(top, guideOverride) {
+  function renderPanel(top, guidesOverride) {
     if (!top) return;
-    if (!guideOverride && !builtInRulesEnabled()) {
-      renderPanelError(top, "Groq did not return guidance", "No rule-based fallback in groq-only mode.");
-      return;
+    let guides = Array.isArray(guidesOverride)
+      ? guidesOverride
+      : guidesOverride
+        ? guidesFromStored(guidesOverride, lastScores)
+        : null;
+    if (!guides?.length) {
+      if (!builtInRulesEnabled()) {
+        renderPanelError(top, "Groq did not return guidance", "No rule-based fallback in groq-only mode.");
+        return;
+      }
+      guides = lastScores ? guidesForScores(lastScores) : [{ ...treatmentForBarKey(top.barKey, top.pct), barKey: top.barKey, pct: top.pct }];
     }
-    const guide = guideOverride || treatmentForBarKey(top.barKey, top.pct);
-    renderPanelContent(top, guide);
-    rememberGuide(activeTileKey, guide, lastScores ? scoresKey(lastScores) : "");
+    if (!guides.length) return;
+    renderPanelContent(guides);
+    rememberGuide(activeTileKey, guides, lastScores ? scoresKey(lastScores) : "");
   }
 
   function readRecommendationStore() {
@@ -288,7 +363,7 @@
     }
   }
 
-  function guideRecord(guide, scoresKeyValue) {
+  function singleGuideRecord(guide) {
     if (!guide || typeof guide !== "object" || guide.error) return null;
     const summary = String(guide.summary || "").trim().slice(0, 800);
     const actionSteps = Array.isArray(guide.actionSteps)
@@ -305,9 +380,54 @@
         : [],
       isCriticalRemoval: Boolean(guide.isCriticalRemoval),
     };
-    const key = String(scoresKeyValue || guide.scoresKey || "").trim().slice(0, 200);
-    if (key) record.scoresKey = key;
+    const barKey = String(guide.barKey || "").trim();
+    if (BAR_KEYS.includes(barKey)) record.barKey = barKey;
+    const pct = Math.min(100, Math.max(0, Number(guide.pct) || 0));
+    if (pct > 0) record.pct = Math.round(pct * 10) / 10;
     return record;
+  }
+
+  function guideRecord(guideOrGuides, scoresKeyValue) {
+    const list = Array.isArray(guideOrGuides)
+      ? guideOrGuides
+      : guideOrGuides?.guides && Array.isArray(guideOrGuides.guides)
+        ? guideOrGuides.guides
+        : guideOrGuides
+          ? [guideOrGuides]
+          : [];
+    const guides = list.map(singleGuideRecord).filter(Boolean).slice(0, BAR_KEYS.length);
+    if (!guides.length) {
+      const legacy = singleGuideRecord(guideOrGuides);
+      if (!legacy) return null;
+      const key = String(scoresKeyValue || guideOrGuides?.scoresKey || "").trim().slice(0, 200);
+      if (key) legacy.scoresKey = key;
+      return legacy;
+    }
+    const primary = { ...guides[0] };
+    const key = String(
+      scoresKeyValue || guideOrGuides?.scoresKey || (Array.isArray(guideOrGuides) ? "" : guideOrGuides?.scoresKey) || ""
+    ).trim().slice(0, 200);
+    if (key) primary.scoresKey = key;
+    if (guides.length > 1) primary.guides = guides;
+    return primary;
+  }
+
+  function guidesFromStored(stored, scores) {
+    const fromScores = scores ? guidesForScores(scores) : [];
+    if (stored?.guides?.length) {
+      return stored.guides.map((guide) => singleGuideRecord(guide)).filter(Boolean);
+    }
+    // Older saves only kept the top match — rebuild from scores when more were detected.
+    if (fromScores.length > 1) return fromScores;
+    if (stored && (stored.summary || stored.actionSteps?.length)) {
+      const one = singleGuideRecord(stored);
+      if (one) {
+        if (!one.barKey && fromScores[0]?.barKey) one.barKey = fromScores[0].barKey;
+        if (!one.pct && fromScores[0]?.pct) one.pct = fromScores[0].pct;
+        return [one];
+      }
+    }
+    return fromScores;
   }
 
   function storedGuide(tileId) {
@@ -316,9 +436,9 @@
     return guideRecord(readRecommendationStore()[id]);
   }
 
-  function rememberGuide(tileId, guide, key) {
+  function rememberGuide(tileId, guides, key) {
     const id = tileKey(tileId);
-    const record = guideRecord(guide, key);
+    const record = guideRecord(guides, key);
     if (!id || !record) return;
     const store = readRecommendationStore();
     if (JSON.stringify(store[id]) === JSON.stringify(record)) return;
@@ -344,17 +464,18 @@
     if (existing && existing.scoresKey === key) return existing;
     const top = findTopDisease(scores);
     if (!top) return null;
-    let guide = null;
+    let topGuide = null;
     const client = window.TomatoInsightGroqClient;
     if (client?.groqEnabled?.() && client.fetchCareRecommendation) {
       const result = await client.fetchCareRecommendation(scores);
       const groqOnly = Boolean(client.groqOnlyMode?.());
-      if (result?.ok && result.guide && (!groqOnly || result.groqUsed)) guide = result.guide;
+      if (result?.ok && result.guide && (!groqOnly || result.groqUsed)) topGuide = result.guide;
       else if (groqOnly) return null;
     }
-    if (!guide && builtInRulesEnabled()) guide = treatmentForBarKey(top.barKey, top.pct);
-    if (!guide) return null;
-    const record = guideRecord(guide, key);
+    let guides = mergeGuidesWithTopOverride(scores, topGuide);
+    if (!guides.length && builtInRulesEnabled()) guides = guidesForScores(scores);
+    if (!guides.length) return null;
+    const record = guideRecord(guides, key);
     if (!record) return null;
     const store = readRecommendationStore();
     store[id] = record;
@@ -402,7 +523,7 @@
     const tile = activeTileKey;
 
     if (guideCache.has(key)) {
-      renderPanel(top, guideCache.get(key));
+      renderPanel(top, mergeGuidesWithTopOverride(scores, guideCache.get(key)));
       return;
     }
 
@@ -410,7 +531,7 @@
       if (groqOnly) {
         renderPanelError(top, "Groq client not configured", "Set useGroqRecommendations and recommendProxyUrl in js/Groq/groq-config.js.");
       } else {
-        renderPanel(top);
+        renderPanel(top, guidesForScores(scores));
       }
       return;
     }
@@ -421,7 +542,7 @@
     if (!stillShowing(key, tile)) return;
 
     if (result && !result.error) {
-      renderPanel(top, result);
+      renderPanel(top, mergeGuidesWithTopOverride(scores, result));
       return;
     }
 
@@ -447,7 +568,7 @@
       return;
     }
 
-    renderPanel(top);
+    renderPanel(top, guidesForScores(scores));
   }
 
   function setButtonEnabled(enabled) {
@@ -455,7 +576,12 @@
     if (!btn) return;
     btn.hidden = !enabled;
     btn.disabled = !enabled;
-    if (enabled && lastTop && lastTop.pct >= 100 && normalizeKey(lastTop.barKey) !== "healthy") {
+    const critical = Boolean(
+      lastDetected?.some(
+        (item) => item.pct >= 100 && normalizeKey(item.barKey) !== "healthy"
+      )
+    );
+    if (enabled && critical) {
       btn.textContent = "Urgent: remove leaf — view steps";
     } else {
       btn.textContent = "View care recommendations";
@@ -471,7 +597,8 @@
     const stored = storedGuide(activeTileKey);
     const currentKey = lastScores ? scoresKey(lastScores) : "";
     if (stored && (!stored.scoresKey || !currentKey || stored.scoresKey === currentKey)) {
-      renderPanel(lastTop, stored);
+      const guides = guidesFromStored(stored, lastScores);
+      renderPanel(lastTop, guides.length ? guides : stored);
       return;
     }
     if (lastScores) loadGroqPanel(lastTop, lastScores);
@@ -486,7 +613,8 @@
     const nextKey = nextScores ? scoresKey(nextScores) : "";
     const prevKey = lastScores ? scoresKey(lastScores) : "";
     lastScores = nextScores;
-    lastTop = findTopDisease(nextScores);
+    lastDetected = findDetectedMatches(nextScores);
+    lastTop = lastDetected[0] || null;
     setButtonEnabled(Boolean(lastTop));
     if (!lastTop) {
       clearPanelDisplay();
@@ -518,6 +646,10 @@
     onScoresUpdated,
     treatmentForBarKey,
     findTopDisease,
+    findDetectedMatches,
+    guidesForScores,
+    guidesFromStored,
+    renderGuidesHtml,
     captureForSave,
     forget: forgetGuide,
     storedForTile: storedGuide,

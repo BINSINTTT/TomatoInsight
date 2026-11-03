@@ -128,6 +128,255 @@
 
   function initFlashcards() {
     document.querySelectorAll(".ti-flashcards").forEach(setupFlashcards);
+    initHowGlassCards();
+  }
+
+  function initHowGlassCards() {
+    const root = document.querySelector("[data-how-glass]");
+    if (!root) return;
+
+    const slots = Array.from(root.querySelectorAll("[data-glass-slot]"));
+    const dotsWrap = root.querySelector(".hiw-glass__dots");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const slides = [
+      {
+        src: "../img/how-works-00-add-blueprint.png",
+        label: "Add",
+        alt: "Empty farm blueprint with add button to set rows and columns",
+      },
+      {
+        src: "../img/how-works-01-layout.png",
+        label: "Layout",
+        alt: "Farm layout setup with rows and columns preview",
+      },
+      {
+        src: "../img/how-works-02-blueprint.png",
+        label: "Blueprint",
+        alt: "Farm blueprint grid with plant tiles ready to scan",
+      },
+      {
+        src: "../img/how-works-03-upload.png",
+        label: "Upload",
+        alt: "Tile drawer open to upload a tomato leaf photo",
+      },
+      {
+        src: "../img/how-works-04-scanning.png",
+        label: "Scan",
+        alt: "Leaf photo being analyzed in the scan panel",
+      },
+      {
+        src: "../img/how-works-05-result.png",
+        label: "Result",
+        alt: "Disease classification result with TLCV at 100 percent",
+      },
+      {
+        src: "../img/how-works-06-care.png",
+        label: "Care",
+        alt: "Care recommendations and treatment steps after a scan",
+      },
+    ];
+    if (!slots.length || slides.length < 3) return;
+
+    let index = 0;
+    let hoverTimer = null;
+    let isHovering = false;
+    let switching = false;
+    const HOVER_ADVANCE_MS = 2800;
+    const SLIDE_MS = 680;
+    const fan = root.querySelector(".hiw-glass__fan");
+    if (!fan) return;
+
+    let track = fan.querySelector(".hiw-glass__track");
+    if (!track) {
+      track = document.createElement("div");
+      track.className = "hiw-glass__track";
+      while (fan.firstChild) track.appendChild(fan.firstChild);
+      fan.appendChild(track);
+    }
+
+    if (dotsWrap) {
+      dotsWrap.innerHTML = "";
+      slides.forEach((slide, i) => {
+        const dot = document.createElement("button");
+        dot.type = "button";
+        dot.className = "hiw-glass__dot";
+        dot.setAttribute("role", "tab");
+        dot.setAttribute("aria-label", slide.label);
+        dot.addEventListener("click", () => {
+          if (i === index || switching) return;
+          goTo(i, true);
+          if (isHovering) scheduleAdvance();
+        });
+        dotsWrap.appendChild(dot);
+      });
+    }
+    const dots = Array.from(root.querySelectorAll(".hiw-glass__dot"));
+
+    function normalize(i) {
+      return ((i % slides.length) + slides.length) % slides.length;
+    }
+
+    function applySlides() {
+      slots.forEach((slot, slotIndex) => {
+        const slide = slides[(index + slotIndex) % slides.length];
+        const img = slot.querySelector("img");
+        slot.setAttribute("data-text", slide.label);
+        if (img) {
+          img.src = slide.src;
+          img.alt = slide.alt;
+        }
+      });
+      dots.forEach((dot, i) => {
+        const active = i === index;
+        dot.classList.toggle("is-active", active);
+        dot.setAttribute("aria-selected", active ? "true" : "false");
+      });
+    }
+
+    function wait(ms) {
+      return new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+
+    function preload(src) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+        img.src = src;
+      });
+    }
+
+    function fillCard(card, slide) {
+      card.setAttribute("data-text", slide.label);
+      const img = card.querySelector("img");
+      if (img) {
+        img.src = slide.src;
+        img.alt = slide.alt;
+      }
+    }
+
+    function cardStep() {
+      const a = slots[0].getBoundingClientRect();
+      const b = slots[1].getBoundingClientRect();
+      return Math.abs(b.left - a.left) || a.width;
+    }
+
+    function resetTrackTransform() {
+      track.style.transition = "none";
+      track.style.transform = "";
+      track.style.marginLeft = "";
+      void track.offsetWidth;
+      track.style.transition = "";
+    }
+
+    async function slideByOne(direction) {
+      const forward = direction > 0;
+      const incomingSlide = forward
+        ? slides[(index + 3) % slides.length]
+        : slides[normalize(index - 1)];
+      await preload(incomingSlide.src);
+
+      const incoming = slots[0].cloneNode(true);
+      incoming.classList.remove("is-exit");
+      incoming.removeAttribute("data-glass-slot");
+      incoming.setAttribute("data-incoming", "");
+      incoming.style.setProperty("--r", forward ? "25" : "-15");
+      fillCard(incoming, incomingSlide);
+
+      // Keep cards visually centered while locking a left-aligned track for the slide.
+      const inset = slots[0].getBoundingClientRect().left - fan.getBoundingClientRect().left;
+      root.classList.add("is-sliding");
+      track.style.marginLeft = `${Math.max(0, inset)}px`;
+      void track.offsetWidth;
+
+      const step = cardStep();
+      const exitCard = forward ? slots[0] : slots[slots.length - 1];
+
+      if (forward) track.appendChild(incoming);
+      else track.insertBefore(incoming, slots[0]);
+
+      track.style.transition = "none";
+      track.style.transform = forward ? "translateX(0)" : `translateX(-${step}px)`;
+      void track.offsetWidth;
+
+      track.style.transition = `transform ${SLIDE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+      exitCard.classList.add("is-exit");
+      track.style.transform = forward ? `translateX(-${step}px)` : "translateX(0)";
+
+      await wait(SLIDE_MS);
+
+      index = normalize(index + direction);
+      applySlides();
+      incoming.remove();
+      exitCard.classList.remove("is-exit");
+      resetTrackTransform();
+      root.classList.remove("is-sliding");
+    }
+
+    async function goTo(nextIndex, animate) {
+      if (switching) return;
+      const target = normalize(nextIndex);
+      if (target === index) return;
+
+      if (!animate || reduceMotion) {
+        index = target;
+        applySlides();
+        return;
+      }
+
+      switching = true;
+      try {
+        const forwardDist = normalize(target - index);
+        const backwardDist = normalize(index - target);
+        const direction = forwardDist <= backwardDist ? 1 : -1;
+        let steps = Math.min(forwardDist, backwardDist);
+        if (steps === 0) steps = forwardDist;
+        while (steps > 0) {
+          await slideByOne(direction);
+          steps -= 1;
+        }
+      } finally {
+        switching = false;
+      }
+    }
+
+    function clearAdvance() {
+      if (hoverTimer) window.clearTimeout(hoverTimer);
+      hoverTimer = null;
+    }
+
+    function scheduleAdvance() {
+      clearAdvance();
+      if (reduceMotion || !isHovering) return;
+      hoverTimer = window.setTimeout(async () => {
+        await goTo(index + 1, true);
+        scheduleAdvance();
+      }, HOVER_ADVANCE_MS);
+    }
+
+    root.addEventListener("mouseenter", () => {
+      isHovering = true;
+      root.classList.add("is-open");
+      scheduleAdvance();
+    });
+    root.addEventListener("mouseleave", () => {
+      isHovering = false;
+      root.classList.remove("is-open");
+      clearAdvance();
+    });
+    root.addEventListener("focusin", () => {
+      isHovering = true;
+      root.classList.add("is-open");
+      scheduleAdvance();
+    });
+    root.addEventListener("focusout", (event) => {
+      if (root.contains(event.relatedTarget)) return;
+      isHovering = false;
+      root.classList.remove("is-open");
+      clearAdvance();
+    });
+
+    applySlides();
   }
 
   function setupFlashcards(root) {

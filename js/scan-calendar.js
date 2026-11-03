@@ -71,21 +71,35 @@
     return Math.min(lastWeek, firstWeek + Math.floor(days / WEEK_DAYS));
   }
 
+  /** Active calendar day used for testing and reminders (selected → next due → today). */
+  function asOfIso() {
+    const schedule = read();
+    if (!schedule.enabled) return isoFromDate(new Date());
+    if (schedule.selected && dateFromIso(schedule.selected)) return schedule.selected;
+    if (schedule.nextDue && dateFromIso(schedule.nextDue)) return schedule.nextDue;
+    if (schedule.anchor && dateFromIso(schedule.anchor)) return schedule.anchor;
+    return isoFromDate(new Date());
+  }
+
   function weekForScan() {
     const schedule = read();
     if (!schedule.enabled) return null;
-    const iso = schedule.selected || schedule.anchor || isoFromDate(new Date());
-    return weekNumberForIso(iso);
+    return weekNumberForIso(asOfIso());
   }
 
   function savedAtForScan() {
     const schedule = read();
     if (!schedule.enabled) return "";
-    const iso = schedule.selected || schedule.anchor || isoFromDate(new Date());
-    const date = dateFromIso(iso);
+    const date = dateFromIso(asOfIso());
     if (!date) return "";
     date.setHours(12, 0, 0, 0);
     return date.toISOString();
+  }
+
+  function scanDayIsoForSave() {
+    const schedule = read();
+    if (!schedule.enabled) return "";
+    return asOfIso();
   }
 
   function noteScanDate(iso) {
@@ -108,7 +122,7 @@
     return isoFromInstant(savedAtIso);
   }
 
-  /** Next week for one plant. Uses that tile's scan day, not the farm anchor shared by all tiles. */
+  /** Next week for one plant. Uses that tile's scan day; custom calendar "as of" date for testing. */
   function reminderWeekForPlant(savedAtIso, latestWeek, scanDayIso) {
     const schedule = read();
     if (!schedule.enabled || !schedule.anchor) return null;
@@ -116,15 +130,21 @@
     if (!Number.isFinite(week)) return null;
     const nextWeek = week + 1;
     if (nextWeek > 12) return null;
+
+    const referenceIso = asOfIso();
+    const referenceWeek = weekNumberForIso(referenceIso);
+    if (!Number.isFinite(referenceWeek) || referenceWeek < nextWeek) return null;
+
     const scanIso = scanDayForReminder(savedAtIso, scanDayIso);
-    if (!scanIso) return null;
-    const todayIso = isoFromDate(new Date());
-    const waited = daysBetween(scanIso, todayIso);
-    if (waited != null && waited >= WEEK_DAYS) return nextWeek;
-    if (schedule.nextDue && weekNumberForIso(schedule.nextDue) === nextWeek) {
-      const gap = daysBetween(scanIso, schedule.nextDue);
-      if (gap != null && gap >= WEEK_DAYS) return nextWeek;
+    if (scanIso) {
+      const waited = daysBetween(scanIso, referenceIso);
+      if (waited != null && waited >= WEEK_DAYS) return nextWeek;
     }
+
+    // Fallback when scan day was wall-clock: farm week has advanced from the shared anchor.
+    const sinceAnchor = daysBetween(schedule.anchor, referenceIso);
+    if (sinceAnchor != null && sinceAnchor >= WEEK_DAYS) return nextWeek;
+
     return null;
   }
 
@@ -160,7 +180,9 @@
     isoFromDate,
     formatIso,
     daysBetween,
+    asOfIso,
     savedAtForScan,
+    scanDayIsoForSave,
     noteScanDate,
     chooseDate,
     weekNumberForIso,

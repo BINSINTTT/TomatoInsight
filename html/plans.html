@@ -108,9 +108,6 @@
             <header class="plans-top">
               <div>
                 <h1>Credit plans</h1>
-                <p class="plans-top__sub">
-                  Each saved scan uses 1 credit. Checkout is a free demo — you pay $0 and a payment record is stored in Firestore.
-                </p>
               </div>
               <div class="plans-balance" aria-live="polite">
                 <span class="plans-balance__label">Your balance</span>
@@ -118,46 +115,70 @@
               </div>
             </header>
 
-            <section class="plans-card" aria-labelledby="plans-packs-title">
+            <section class="plans-card plans-card--packs" aria-labelledby="plans-packs-title">
               <p class="plans-card__eyebrow">Top up</p>
               <h2 class="plans-card__title" id="plans-packs-title">Choose a pack</h2>
-              <p class="plans-card__intro">1 credit = 1 successful save after a leaf scan and classification.</p>
               <ul class="credit-plans-grid" role="list">
                 <li class="credit-plan">
-                  <div class="credit-plan__head">
-                    <span class="credit-plan__name">Starter</span>
-                    <span class="credit-plan__credits">10 credits</span>
+                  <div class="credit-plan__intro">
+                    <h3 class="credit-plan__name">Starter</h3>
+                    <p class="credit-plan__audience">Small farms getting started</p>
                   </div>
-                  <p class="credit-plan__price"><span class="credit-plan__amount">$4.99</span></p>
-                  <p class="credit-plan__note">About $0.50 per scan</p>
-                  <button type="button" class="credit-plan__btn" data-credit-pack="starter">Continue to checkout</button>
+                  <p class="credit-plan__price">
+                    <span class="credit-plan__amount">₱49</span>
+                    <span class="credit-plan__period">/pack</span>
+                  </p>
+                  <ul class="credit-plan__features">
+                    <li>10 scan credits</li>
+                    <li>Leaf disease classification</li>
+                    <li>Farm blueprint tiles</li>
+                    <li>Care recommendations</li>
+                    <li>Home dashboard access</li>
+                  </ul>
+                  <button type="button" class="credit-plan__btn" data-credit-pack="starter">Choose Plan</button>
                 </li>
                 <li class="credit-plan credit-plan--featured">
-                  <span class="credit-plan__badge">Popular</span>
-                  <div class="credit-plan__head">
-                    <span class="credit-plan__name">Grower</span>
-                    <span class="credit-plan__credits">25 credits</span>
+                  <span class="credit-plan__badge">Most Popular</span>
+                  <div class="credit-plan__intro">
+                    <h3 class="credit-plan__name">Grower</h3>
+                    <p class="credit-plan__audience">Busy farms with regular scans</p>
                   </div>
-                  <p class="credit-plan__price"><span class="credit-plan__amount">$9.99</span></p>
-                  <p class="credit-plan__note">About $0.40 per scan</p>
+                  <p class="credit-plan__price">
+                    <span class="credit-plan__amount">₱99</span>
+                    <span class="credit-plan__period">/pack</span>
+                  </p>
+                  <ul class="credit-plan__features">
+                    <li>25 scan credits</li>
+                    <li>Leaf disease classification</li>
+                    <li>Farm blueprint tiles</li>
+                    <li>Care recommendations</li>
+                    <li>Scan history &amp; monitoring</li>
+                    <li>Week reminders</li>
+                    <li>~₱4.00 per scan</li>
+                  </ul>
                   <button type="button" class="credit-plan__btn credit-plan__btn--primary" data-credit-pack="grower">
-                    Continue to checkout
+                    Get started
                   </button>
                 </li>
                 <li class="credit-plan">
-                  <div class="credit-plan__head">
-                    <span class="credit-plan__name">Season</span>
-                    <span class="credit-plan__credits">50 credits</span>
+                  <div class="credit-plan__intro">
+                    <h3 class="credit-plan__name">Season</h3>
+                    <p class="credit-plan__audience">Full-season coverage for larger plots</p>
                   </div>
-                  <p class="credit-plan__price"><span class="credit-plan__amount">$17.99</span></p>
-                  <p class="credit-plan__note">About $0.36 per scan</p>
-                  <button type="button" class="credit-plan__btn" data-credit-pack="season">Continue to checkout</button>
+                  <p class="credit-plan__price">
+                    <span class="credit-plan__amount">₱149</span>
+                    <span class="credit-plan__period">/pack</span>
+                  </p>
+                  <ul class="credit-plan__features">
+                    <li>50 scan credits</li>
+                    <li>Best value per scan (~₱3)</li>
+                    <li>All Grower features</li>
+                    <li>Season-long tracking</li>
+                    <li>Priority pack size</li>
+                  </ul>
+                  <button type="button" class="credit-plan__btn" data-credit-pack="season">Choose Plan</button>
                 </li>
               </ul>
-              <p class="plans-footnote">
-                Demo checkout never charges a card. Each successful Pay $0 writes a row in the Firestore
-                <code>payments</code> collection and adds the pack credits to your balance.
-              </p>
             </section>
 
             <section class="plans-card plans-card--history" aria-labelledby="plans-payments-title">

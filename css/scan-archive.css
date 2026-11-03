@@ -323,6 +323,12 @@
   padding-left: 1.1rem;
 }
 
+.scan-treatment-panel__disease + .scan-treatment-panel__disease {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(67, 160, 71, 0.18);
+}
+
 .scan-treatment-panel__disclaimer {
   margin: 0.75rem 0 0;
   font-size: 0.6875rem;

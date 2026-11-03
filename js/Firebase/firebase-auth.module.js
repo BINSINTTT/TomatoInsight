@@ -3,6 +3,11 @@ import {
   getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
   signOut as firebaseSignOut,
   sendPasswordResetEmail as firebaseSendPasswordResetEmail,
   verifyPasswordResetCode as firebaseVerifyPasswordResetCode,
@@ -27,6 +32,13 @@ function authErrorMessage(error) {
     "auth/too-many-requests": "Too many attempts. Wait a moment and try again.",
     "auth/network-request-failed": "Network error. Check your connection.",
     "auth/missing-email": "Enter your email address.",
+    "auth/popup-closed-by-user": "Google sign-in was cancelled.",
+    "auth/popup-blocked": "Allow pop-ups for this site to continue with Google.",
+    "auth/cancelled-popup-request": "Google sign-in was cancelled.",
+    "auth/account-exists-with-different-credential":
+      "An account already exists with this email using a different sign-in method.",
+    "auth/operation-not-allowed":
+      "Google sign-in is not enabled yet. Turn on Google in Firebase Authentication → Sign-in method.",
     "auth/unauthorized-continue-uri":
       "This app URL is not in Firebase Authorized domains. Add the host you use in the browser (e.g. 127.0.0.1 and localhost) under Authentication → Settings → Authorized domains.",
     "auth/expired-action-code": "This reset link has expired. Request a new reset email.",
@@ -53,6 +65,17 @@ function initFirebase() {
 const auth = initFirebase();
 
 window.TomatoInsightAuth = {
+  async setRememberSession(remember) {
+    if (!auth) return { ok: false, error: "Firebase is not configured." };
+    try {
+      await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
+      return { ok: true };
+    } catch (err) {
+      console.warn("[TomatoInsight] setPersistence", err);
+      return { ok: false, error: authErrorMessage(err) };
+    }
+  },
+
   async signInWithEmail({ email, password }) {
     if (!auth) return { ok: false, error: "Firebase is not configured." };
     try {
@@ -60,6 +83,19 @@ window.TomatoInsightAuth = {
       return { ok: true };
     } catch (err) {
       console.error("[TomatoInsight] signIn", err);
+      return { ok: false, error: authErrorMessage(err) };
+    }
+  },
+
+  async signInWithGoogle() {
+    if (!auth) return { ok: false, error: "Firebase is not configured." };
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      await signInWithPopup(auth, provider);
+      return { ok: true };
+    } catch (err) {
+      console.error("[TomatoInsight] signInWithGoogle", err);
       return { ok: false, error: authErrorMessage(err) };
     }
   },
@@ -205,19 +241,8 @@ window.TomatoInsightAuth = {
   async signOut() {
     if (!auth) return { ok: false, error: "Firebase is not configured." };
     try {
-      const uid = auth.currentUser?.uid;
-      if (uid) {
-        // Best-effort flush of local farm data. Never block sign-out on it.
-        import("./user-data-sync.module.js")
-          .then(({ flushLocalFarmToRtdb }) =>
-            flushLocalFarmToRtdb(uid).catch((flushErr) => {
-              console.warn("[TomatoInsight] Could not flush farm data before sign out:", flushErr);
-            })
-          )
-          .catch((importErr) => {
-            console.warn("[TomatoInsight] Could not load farm sync before sign out:", importErr);
-          });
-      }
+      // Snapshot + flush happen in bindUserDataSync onAuthStateChanged(null).
+      // Do not flush again here after localStorage is cleared — that wiped cloud tiles/layout.
       await firebaseSignOut(auth);
       window.TomatoInsightAuthSession?.markSignedOut?.();
       return { ok: true };

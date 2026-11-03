@@ -1,6 +1,6 @@
 # Tomato Insight Web — How to Run (Terminal)
 
-Use the local Python server for the site **and** API proxies (Roboflow + Ultralytics). Do not open `html/index.html` with double-click (`file://`) — validation, classification, and Firebase modules need HTTP.
+Use the local Python server for the site **and** API proxies (Ultralytics + Groq). Do not open `html/index.html` with double-click (`file://`) — validation, classification, and Firebase modules need HTTP.
 
 ---
 
@@ -24,9 +24,9 @@ Copy environment files if missing:
 
 | File | Action |
 |------|--------|
-| `server\.env.example` → `server\.env` | Roboflow + Ultralytics + Groq keys |
+| `server\.env.example` → `server\.env` | Ultralytics + Groq keys |
 | `js\Groq\groq-config.example.js` → `js\Groq\groq-config.js` | Groq proxy URL (optional; repo includes defaults) |
-| `js\TomatoValidator\roboflow-config.example.js` → `js\TomatoValidator\roboflow-config.js` | Leaf validation settings |
+| `js\TomatoValidator\validation-config.example.js` → `js\TomatoValidator\validation-config.js` | Leaf validation settings |
 | `js\DiseaseClassification\disease-classification-config.example.js` → `js\DiseaseClassification\disease-classification-config.js` | Disease model |
 | `js\Firebase\firebase-config.example.js` → `js\Firebase\firebase-config.js` | Firebase web config |
 
@@ -103,7 +103,7 @@ Then run `.\start.ps1` again.
 | Endpoint | Purpose |
 |----------|---------|
 | `GET /` | Serves static HTML/CSS/JS |
-| `POST /validate` | Tomato leaf check (Roboflow proxy) |
+| `POST /validate` | Tomato leaf check (Ultralytics proxy) |
 | `POST /classify` | Disease bars (Ultralytics proxy) |
 
 Browser scripts call these URLs to avoid CORS errors.

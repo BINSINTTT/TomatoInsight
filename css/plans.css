@@ -60,6 +60,22 @@
   box-shadow: 0 10px 32px rgba(36, 48, 70, 0.05);
 }
 
+.page-plans .plans-card--packs {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.55) 0 14px,
+      rgba(255, 244, 242, 0.9) 14px 28px
+    ),
+    linear-gradient(180deg, #fff8f7 0%, #ffe8e4 100%);
+  border-color: rgba(229, 57, 53, 0.12);
+  overflow: visible;
+}
+
+.page-plans .plans-card--packs .credit-plans-grid {
+  margin-top: 0.35rem;
+}
+
 .page-plans .plans-card__eyebrow {
   margin: 0 0 0.35rem;
   font-size: 0.72rem;

@@ -34,7 +34,7 @@
       .replace(/[^a-z0-9]/g, "");
   }
 
-  const userConfig = window.TomatoInsightRoboflow || {};
+  const userConfig = window.TomatoInsightValidation || {};
   const config = {
     ...DEFAULTS,
     ...userConfig,
@@ -79,6 +79,22 @@
   }
 
   function interpretValidationPayload(payload) {
+    const flaskResult = String(payload?.result || "").trim().toLowerCase();
+    if (flaskResult === "tomatoleaf" || flaskResult === "nottomato") {
+      const detectedClass = String(payload.detected_class || payload.detectedClass || "").trim() || null;
+      const confidence = normalizeConfidence(payload.confidence);
+      const isTomato = flaskResult === "tomatoleaf";
+      return {
+        isTomato,
+        confidence,
+        detectedClass,
+        detectionCount: Number(payload.detection_count) || 0,
+        message: payload.message || (isTomato
+          ? "Tomato leaf detected!"
+          : "No tomato leaf was detected in this image."),
+      };
+    }
+
     const predictions = extractPredictions(payload);
     if (!predictions.length) {
       return {
@@ -276,7 +292,9 @@
       const verdict = interpretValidationPayload(result);
       let classifying = false;
       if (verdict.isTomato) {
-        classifying = startClassification(file, loadToken);
+        classifying = applyServerClassification(result)
+          ? false
+          : startClassification(file, loadToken);
       } else if (config.strictValidation) {
         showInvalidImageAlert(verdict.message, verdict);
         window.TomatoInsightScan?.setClassificationScores?.({});
@@ -308,6 +326,27 @@
 
   function isCurrentRequest(requestId) {
     return requestId == null || requestId === activeRequest;
+  }
+
+  function applyServerClassification(payload) {
+    const predictions = window.TomatoInsightDisease?.extractPredictions?.(payload);
+    if (!predictions?.length || !window.TomatoInsightDisease?.mapToBarScores) return false;
+    const looksLikeDisease = predictions.some((item) => {
+      const key = String(item?.name || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+      return (
+        key.includes("healthy") ||
+        key.includes("blight") ||
+        key.includes("wilt") ||
+        key.includes("tlcv") ||
+        key.includes("leafcurl")
+      );
+    });
+    if (!looksLikeDisease) return false;
+    const scores = window.TomatoInsightDisease.mapToBarScores(predictions);
+    window.TomatoInsightScan?.setClassificationScores?.(scores);
+    return true;
   }
 
   function startClassification(file, loadToken) {

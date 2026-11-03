@@ -3,7 +3,7 @@
  *
  *   payments/{paymentId}
  *     uid, email, packId, packName, credits,
- *     listPriceUsd, amountChargedUsd, currency,
+ *     listPricePhp, amountChargedPhp, currency ("PHP"),
  *     status, method, isDemo,
  *     createdAt, createdAtMs, balanceBefore, balanceAfter
  *
@@ -19,10 +19,11 @@ import {
   getDocs,
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
+/** Affordable PHP packs for local farmers (demo checkout still charges ₱0). */
 export const CREDIT_PACKS = {
-  starter: { packId: "starter", packName: "Starter", credits: 10, listPriceUsd: 4.99 },
-  grower: { packId: "grower", packName: "Grower", credits: 25, listPriceUsd: 9.99 },
-  season: { packId: "season", packName: "Season", credits: 50, listPriceUsd: 17.99 },
+  starter: { packId: "starter", packName: "Starter", credits: 10, listPricePhp: 49 },
+  grower: { packId: "grower", packName: "Grower", credits: 25, listPricePhp: 99 },
+  season: { packId: "season", packName: "Season", credits: 50, listPricePhp: 149 },
 };
 
 const PACK_BY_CREDITS = {
@@ -49,10 +50,17 @@ export function packFor(packIdOrCredits) {
   return null;
 }
 
-export function formatUsd(amount) {
+export function formatPhp(amount) {
   const n = Number(amount);
-  if (!Number.isFinite(n)) return "$0.00";
-  return `$${n.toFixed(2)}`;
+  if (!Number.isFinite(n)) return "₱0";
+  const rounded = Math.round(n * 100) / 100;
+  if (Number.isInteger(rounded)) return `₱${rounded}`;
+  return `₱${rounded.toFixed(2)}`;
+}
+
+/** @deprecated Prefer formatPhp — kept for older callers. */
+export function formatUsd(amount) {
+  return formatPhp(amount);
 }
 
 export async function listPaymentsForCurrentUser() {
@@ -81,15 +89,15 @@ function ensureCheckoutModal() {
       <header class="modal__header">
         <div>
           <p class="demo-checkout__eyebrow">Demo checkout</p>
-          <h2 class="modal__title" id="demo-checkout-title">Pay $0 to add credits</h2>
+          <h2 class="modal__title" id="demo-checkout-title">Pay ₱0 to add credits</h2>
         </div>
         <button type="button" class="modal__close" data-close-demo-checkout aria-label="Close">×</button>
       </header>
       <div class="modal__body">
         <p class="demo-checkout__pack" id="demo-checkout-pack"></p>
         <dl class="demo-checkout__summary">
-          <div><dt>Listed price</dt><dd id="demo-checkout-list-price">$0.00</dd></div>
-          <div><dt>You pay today</dt><dd id="demo-checkout-pay">$0.00</dd></div>
+          <div><dt>Listed price</dt><dd id="demo-checkout-list-price">₱0</dd></div>
+          <div><dt>You pay today</dt><dd id="demo-checkout-pay">₱0</dd></div>
         </dl>
         <p class="demo-checkout__note">
           This is a free demo. No card is charged. A paid row is still saved in Firestore so you can query purchases.
@@ -98,7 +106,7 @@ function ensureCheckoutModal() {
       </div>
       <footer class="modal__footer">
         <button type="button" class="btn btn--ghost" data-close-demo-checkout>Cancel</button>
-        <button type="button" class="btn btn--primary" id="demo-checkout-pay-btn">Pay $0 (demo)</button>
+        <button type="button" class="btn btn--primary" id="demo-checkout-pay-btn">Pay ₱0 (demo)</button>
       </footer>
     </div>
   `;
@@ -140,13 +148,13 @@ export function openCheckout(packIdOrCredits) {
   const listEl = document.getElementById("demo-checkout-list-price");
   const payEl = document.getElementById("demo-checkout-pay");
   if (packEl) packEl.textContent = `${pack.packName} · ${pack.credits} credits`;
-  if (listEl) listEl.textContent = formatUsd(pack.listPriceUsd);
-  if (payEl) payEl.textContent = "$0.00";
+  if (listEl) listEl.textContent = formatPhp(pack.listPricePhp);
+  if (payEl) payEl.textContent = "₱0";
   setCheckoutError("");
   const payBtn = document.getElementById("demo-checkout-pay-btn");
   if (payBtn) {
     payBtn.disabled = false;
-    payBtn.textContent = "Pay $0 (demo)";
+    payBtn.textContent = "Pay ₱0 (demo)";
   }
   modal.hidden = false;
   document.body.classList.add("modal-open");
@@ -188,7 +196,7 @@ async function payDemoCheckout() {
       paying = false;
       if (payBtn) {
         payBtn.disabled = false;
-        payBtn.textContent = "Pay $0 (demo)";
+        payBtn.textContent = "Pay ₱0 (demo)";
       }
       return;
     }
@@ -198,7 +206,7 @@ async function payDemoCheckout() {
       paying = false;
       if (payBtn) {
         payBtn.disabled = false;
-        payBtn.textContent = "Pay $0 (demo)";
+        payBtn.textContent = "Pay ₱0 (demo)";
       }
       return;
     }
@@ -215,7 +223,7 @@ async function payDemoCheckout() {
     paying = false;
     if (payBtn) {
       payBtn.disabled = false;
-      payBtn.textContent = "Pay $0 (demo)";
+      payBtn.textContent = "Pay ₱0 (demo)";
     }
   }
 }
@@ -223,6 +231,7 @@ async function payDemoCheckout() {
 window.TomatoInsightPayments = {
   CREDIT_PACKS,
   packFor,
+  formatPhp,
   formatUsd,
   openCheckout,
   closeCheckout,

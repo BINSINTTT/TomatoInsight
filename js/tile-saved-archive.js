@@ -436,45 +436,22 @@
 
     function renderTreatmentPanel(top, tileNum, scores) {
       if (!treatmentPanel || !top) return;
-      const stored = window.TomatoInsightRecommendations?.storedForTile?.(tileNum);
-      const key = scores ? window.TomatoInsightRecommendations?.scoresKeyFor?.(scores) : "";
+      const recs = window.TomatoInsightRecommendations;
+      const stored = recs?.storedForTile?.(tileNum);
+      const key = scores ? recs?.scoresKeyFor?.(scores) : "";
       const storedMatches = stored && (!stored.scoresKey || !key || stored.scoresKey === key);
-      const guide = storedMatches
-        ? stored
-        : window.TomatoInsightRecommendations?.treatmentForBarKey?.(top.barKey, top.pct);
-      if (!guide) {
+      let guides = storedMatches ? recs?.guidesFromStored?.(stored, scores) : null;
+      if (!guides?.length) guides = scores ? recs?.guidesForScores?.(scores) : null;
+      if (!guides?.length && recs?.treatmentForBarKey) {
+        guides = [{ ...recs.treatmentForBarKey(top.barKey, top.pct), barKey: top.barKey, pct: top.pct }];
+      }
+      const html = recs?.renderGuidesHtml?.(guides);
+      if (!html) {
         treatmentPanel.hidden = true;
         treatmentPanel.innerHTML = "";
         return;
       }
-
-      const isHealthy = top.barKey === "healthy";
-      const stepsTitle = isHealthy ? "What to do" : "Treatment steps";
-      const urgencyClass = guide.isCriticalRemoval
-        ? "scan-treatment-panel__urgency scan-treatment-panel__urgency--critical"
-        : "scan-treatment-panel__urgency";
-
-      const listHtml = (items) =>
-        items?.length
-          ? `<ul class="scan-treatment-panel__list">${items
-              .map((item) => `<li>${escapeHtml(item)}</li>`)
-              .join("")}</ul>`
-          : "";
-
-      treatmentPanel.innerHTML = `
-      <p class="scan-treatment-panel__eyebrow">Top match · ${fmtPct(top.pct)}%</p>
-      <h4 class="scan-treatment-panel__title">${escapeHtml(guide.diseaseName || (isHealthy ? "Healthy" : ""))}</h4>
-      <p class="${urgencyClass}">${escapeHtml(guide.urgencyNote)}</p>
-      <p class="scan-treatment-panel__summary">${escapeHtml(guide.summary)}</p>
-      <h5 class="scan-treatment-panel__subtitle">${stepsTitle}</h5>
-      ${listHtml(guide.actionSteps)}
-      ${
-        guide.preventionTips?.length
-          ? `<h5 class="scan-treatment-panel__subtitle">Prevention</h5>${listHtml(guide.preventionTips)}`
-          : ""
-      }
-      <p class="scan-treatment-panel__disclaimer">Guidance only — verify on the plant before treating.</p>
-    `;
+      treatmentPanel.innerHTML = html;
     }
 
     function syncTreatmentButton(top, tileNum, scores) {
@@ -492,7 +469,10 @@
       treatmentBtn.hidden = false;
       treatmentBtn.disabled = false;
       treatmentBtn.setAttribute("aria-expanded", "false");
-      const isCritical = top.pct >= 100 && top.barKey !== "healthy";
+      const detected = scores
+        ? window.TomatoInsightRecommendations?.findDetectedMatches?.(scores) || [top]
+        : [top];
+      const isCritical = detected.some((item) => item.pct >= 100 && item.barKey !== "healthy");
       treatmentBtn.textContent = isCritical
         ? "Urgent: remove leaf — view steps"
         : "View care recommendations";

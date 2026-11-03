@@ -202,49 +202,27 @@
             </div>
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- ============ HOW CLASSIFICATION WORKS ============ -->
-    <section class="section-pad bg-white" id="about">
-      <div class="container">
-        <div class="row align-items-center g-5">
-          <div class="col-lg-6" data-aos="fade-right">
-            <h2 class="section-title mb-3" style="font-size: clamp(1.7rem, 3vw, 2.4rem)">
-              How classification works
-            </h2>
-            <p class="section-sub mb-0">
-              Take a photo of a tomato leaf. The app checks that the picture is a tomato leaf, then
-              scores it as healthy, yellow leaf curl, early blight, or spotted wilt. The highest score
-              is the result, and care steps are shown for that match.
-            </p>
-          </div>
-          <div class="col-lg-6" data-aos="fade-left">
-            <div
-              class="ti-flashcards ti-flashcards--result"
-              id="resultFlashcards"
-              aria-roledescription="carousel"
-              aria-label="Classification results"
-            >
-              <div class="ti-flashcards__stage">
-                <figure class="ti-flashcard">
-                  <img src="../img/Result00.png" alt="Classification result for a scanned leaf" />
-                </figure>
-                <figure class="ti-flashcard">
-                  <img src="../img/Result01.png" alt="Care steps for the classification result" />
-                </figure>
-                <button type="button" class="ti-flashcards__btn ti-flashcards__btn--prev" data-flash-prev aria-label="Previous result">
-                  <i class="bi bi-chevron-left" aria-hidden="true"></i>
-                </button>
-                <button type="button" class="ti-flashcards__btn ti-flashcards__btn--next" data-flash-next aria-label="Next result">
-                  <i class="bi bi-chevron-right" aria-hidden="true"></i>
-                </button>
-                <div class="ti-flashcards__dots" role="tablist" aria-label="Choose a result">
-                  <button type="button" class="ti-flashcards__dot" data-flash-dot role="tab" aria-label="Result 1"></button>
-                  <button type="button" class="ti-flashcards__dot" data-flash-dot role="tab" aria-label="Result 2"></button>
-                </div>
-              </div>
+        <div class="hiw-showcase" data-aos="fade-up">
+          <div
+            class="hiw-glass"
+            id="howGlassCards"
+            aria-roledescription="carousel"
+            aria-label="How TomatoInsight works"
+            data-how-glass
+          >
+            <div class="hiw-glass__fan">
+              <article class="hiw-glass__card glass" data-glass-slot="0" style="--r: -15" data-text="Add">
+                <img src="../img/how-works-00-add-blueprint.png" alt="" loading="lazy" decoding="async" />
+              </article>
+              <article class="hiw-glass__card glass" data-glass-slot="1" style="--r: 5" data-text="Layout">
+                <img src="../img/how-works-01-layout.png" alt="" loading="lazy" decoding="async" />
+              </article>
+              <article class="hiw-glass__card glass" data-glass-slot="2" style="--r: 25" data-text="Blueprint">
+                <img src="../img/how-works-02-blueprint.png" alt="" loading="lazy" decoding="async" />
+              </article>
             </div>
+            <div class="hiw-glass__dots" role="tablist" aria-label="Choose a step"></div>
           </div>
         </div>
       </div>
@@ -262,8 +240,14 @@
         <div class="row g-4 ti-feature-grid">
           <div class="col-md-6 col-lg-4" data-aos="fade-up">
             <article class="ti-feature-card ti-feature-card--blueprint">
-              <div class="ti-feature-card__visual" aria-hidden="true">
-                <div class="ti-feature-card__art"></div>
+              <div class="ti-feature-card__visual">
+                <img
+                  class="ti-feature-card__img"
+                  src="../img/feature-farm-blueprint.png"
+                  alt="Farm dashboard blueprint with plant tiles ready to scan"
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
               <div class="ti-feature-card__content">
                 <h3 class="ti-feature-card__title font-display">Farm blueprint</h3>
@@ -277,8 +261,14 @@
           </div>
           <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="80">
             <article class="ti-feature-card ti-feature-card--scan">
-              <div class="ti-feature-card__visual" aria-hidden="true">
-                <div class="ti-feature-card__art"></div>
+              <div class="ti-feature-card__visual">
+                <img
+                  class="ti-feature-card__img"
+                  src="../img/Healthy.png"
+                  alt="Healthy tomato leaf ready for a guarded scan"
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
               <div class="ti-feature-card__content">
                 <h3 class="ti-feature-card__title font-display">Guarded leaf scans</h3>
@@ -292,8 +282,14 @@
           </div>
           <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="160">
             <article class="ti-feature-card ti-feature-card--classify">
-              <div class="ti-feature-card__visual" aria-hidden="true">
-                <div class="ti-feature-card__art"></div>
+              <div class="ti-feature-card__visual">
+                <img
+                  class="ti-feature-card__img"
+                  src="../img/feature-disease-classification.png"
+                  alt="Disease classification panel with leaf scan and confidence scores"
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
               <div class="ti-feature-card__content">
                 <h3 class="ti-feature-card__title font-display">Disease classification</h3>
@@ -306,8 +302,14 @@
           </div>
           <div class="col-md-6 col-lg-4" data-aos="fade-up">
             <article class="ti-feature-card ti-feature-card--care">
-              <div class="ti-feature-card__visual" aria-hidden="true">
-                <div class="ti-feature-card__art"></div>
+              <div class="ti-feature-card__visual">
+                <img
+                  class="ti-feature-card__img"
+                  src="../img/feature-care-recommendations.png"
+                  alt="Care recommendations with treatment steps for yellow leaf curl virus"
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
               <div class="ti-feature-card__content">
                 <h3 class="ti-feature-card__title font-display">Care recommendations</h3>
@@ -315,14 +317,20 @@
                   Treatment steps, prevention tips and an urgency note written for the disease you
                   actually have.
                 </p>
-                <a class="ti-feature-card__link" href="#about">Explore <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                <a class="ti-feature-card__link" href="#how">Explore <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
               </div>
             </article>
           </div>
           <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="80">
             <article class="ti-feature-card ti-feature-card--history">
-              <div class="ti-feature-card__visual" aria-hidden="true">
-                <div class="ti-feature-card__art"></div>
+              <div class="ti-feature-card__visual">
+                <img
+                  class="ti-feature-card__img"
+                  src="../img/feature-scan-history.png"
+                  alt="Scan history archive with plant records and results"
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
               <div class="ti-feature-card__content">
                 <h3 class="ti-feature-card__title font-display">Scan history</h3>
@@ -335,8 +343,14 @@
           </div>
           <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="160">
             <article class="ti-feature-card ti-feature-card--private">
-              <div class="ti-feature-card__visual" aria-hidden="true">
-                <div class="ti-feature-card__art"></div>
+              <div class="ti-feature-card__visual">
+                <img
+                  class="ti-feature-card__img"
+                  src="../img/LoginImage.jpg"
+                  alt="Secure TomatoInsight account sign-in for private farm data"
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
               <div class="ti-feature-card__content">
                 <h3 class="ti-feature-card__title font-display">Private by account</h3>
@@ -344,7 +358,7 @@
                   Sign-in is handled by Firebase Authentication, and your farm data stays with your
                   account.
                 </p>
-                <a class="ti-feature-card__link" href="signup.html">Explore <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                <a class="ti-feature-card__link" href="login.html?signup=1">Explore <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
               </div>
             </article>
           </div>
@@ -513,7 +527,7 @@
             <h6>Explore</h6>
             <ul>
               <li><a class="footer-link" href="#how"><i class="bi bi-caret-right-fill"></i>How it works</a></li>
-              <li><a class="footer-link" href="#about"><i class="bi bi-caret-right-fill"></i>Under the hood</a></li>
+              <li><a class="footer-link" href="#how"><i class="bi bi-caret-right-fill"></i>How it works</a></li>
               <li><a class="footer-link" href="#features"><i class="bi bi-caret-right-fill"></i>Features</a></li>
               <li><a class="footer-link" href="#diseases"><i class="bi bi-caret-right-fill"></i>Diseases</a></li>
             </ul>

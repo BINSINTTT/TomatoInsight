@@ -1,4 +1,4 @@
-js/TomatoValidator/roboflow-config.js
+js/TomatoValidator/validation-config.js
 js/DiseaseClassification/disease-classification-config.js
 server/.env
 server/data/*.accdb

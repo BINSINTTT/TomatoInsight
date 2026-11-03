@@ -44,7 +44,10 @@ async function paintPaymentHistory() {
       const title = document.createElement("b");
       title.textContent = `${row.packName || "Credits"} · +${row.credits || 0}`;
       const meta = document.createElement("span");
-      const charged = api.formatUsd?.(row.amountChargedUsd ?? 0) || "$0.00";
+      const charged =
+        api.formatPhp?.(row.amountChargedPhp ?? row.amountChargedUsd ?? 0) ||
+        api.formatUsd?.(row.amountChargedPhp ?? row.amountChargedUsd ?? 0) ||
+        "₱0";
       meta.textContent = `${charged} demo · ${formatWhen(row.createdAt)}`;
       item.append(title, meta);
       list.appendChild(item);

@@ -51,6 +51,17 @@ let activeUid = null;
 let hydratePromise = Promise.resolve();
 let stopFarmWatch = null;
 let lastCloudJson = "";
+/** Resolves after the first onAuthStateChanged so whenReady() never finishes before hydrate is wired. */
+let resolveFirstAuthEvent = null;
+let firstAuthEvent = new Promise((resolve) => {
+  resolveFirstAuthEvent = resolve;
+});
+
+function markFirstAuthEvent() {
+  if (!resolveFirstAuthEvent) return;
+  resolveFirstAuthEvent();
+  resolveFirstAuthEvent = null;
+}
 
 function resolveSyncUid() {
   if (activeUid) return activeUid;
@@ -268,7 +279,10 @@ export function shouldRefreshUiForUserDataEvent(detail) {
 }
 
 function layoutValid(layout) {
-  return Boolean(layout && layout.rows >= 1 && layout.columns >= 1);
+  if (!layout || typeof layout !== "object") return false;
+  const rows = Number(layout.rows);
+  const columns = Number(layout.columns);
+  return Number.isFinite(rows) && Number.isFinite(columns) && rows >= 1 && columns >= 1;
 }
 
 function layoutRecord(layout, { withUpdatedAt = false } = {}) {
@@ -276,6 +290,17 @@ function layoutRecord(layout, { withUpdatedAt = false } = {}) {
   const record = { rows: Number(layout.rows), columns: Number(layout.columns) };
   if (withUpdatedAt) record.updatedAt = new Date().toISOString();
   return record;
+}
+
+/** Prefer nested layout; also accept top-level rows/columns if older docs used that shape. */
+function layoutFromUserDoc(data) {
+  if (!data || typeof data !== "object") return null;
+  const nested = layoutRecord(data.layout);
+  if (nested) return nested;
+  if (data.layout == null && data.rows != null && data.columns != null) {
+    return layoutRecord({ rows: data.rows, columns: data.columns });
+  }
+  return null;
 }
 
 function sortKeys(value) {
@@ -430,7 +455,7 @@ function diseaseNameList(value) {
   return [text];
 }
 
-function recommendationRecord(value) {
+function singleRecommendationGuide(value) {
   if (!value || typeof value !== "object") return null;
   const summary = String(value.summary || "").trim().slice(0, 800);
   const actionSteps = Array.isArray(value.actionSteps)
@@ -447,11 +472,22 @@ function recommendationRecord(value) {
       : [],
     isCriticalRemoval: Boolean(value.isCriticalRemoval),
   };
+  const barKey = String(value.barKey || value.topBarKey || "").trim();
+  if (SCORE_KEYS.includes(barKey)) record.barKey = barKey;
+  const pct = Math.round(Math.min(100, Math.max(0, Number(value.pct ?? value.topPct) || 0)) * 10) / 10;
+  if (pct > 0) record.pct = pct;
+  return record;
+}
+
+function recommendationRecord(value) {
+  if (!value || typeof value !== "object") return null;
+  const record = singleRecommendationGuide(value);
+  if (!record) return null;
   const scoresKey = String(value.scoresKey || "").trim().slice(0, 200);
   if (scoresKey) record.scoresKey = scoresKey;
-  const topBarKey = String(value.topBarKey || "").trim();
+  const topBarKey = String(value.topBarKey || value.barKey || "").trim();
   if (SCORE_KEYS.includes(topBarKey)) record.topBarKey = topBarKey;
-  const topPct = Math.round(Math.min(100, Math.max(0, Number(value.topPct) || 0)) * 10) / 10;
+  const topPct = Math.round(Math.min(100, Math.max(0, Number(value.topPct ?? value.pct) || 0)) * 10) / 10;
   if (topPct > 0) record.topPct = topPct;
   if (value.source === "groq" || value.source === "rules") record.source = value.source;
   const savedAt = String(value.savedAt || "").trim();
@@ -465,6 +501,10 @@ function recommendationRecord(value) {
   }
   if (!record.diseaseName && record.topBarKey) {
     record.diseaseName = DISEASE_LABELS[record.topBarKey] || "";
+  }
+  if (Array.isArray(value.guides)) {
+    const guides = value.guides.map(singleRecommendationGuide).filter(Boolean).slice(0, SCORE_KEYS.length);
+    if (guides.length > 1) record.guides = guides;
   }
   return record;
 }
@@ -581,7 +621,7 @@ function farmFromDoc(data, tiles) {
     selectedFarmWeek = readLocalFarmWeek();
   }
   return {
-    layout: layoutRecord(source.layout),
+    layout: layoutFromUserDoc(source),
     plantNames: source.plantNames && typeof source.plantNames === "object" ? source.plantNames : {},
     tiles: tiles && typeof tiles === "object" ? tiles : {},
     selectedFarmWeek,
@@ -623,10 +663,9 @@ function applyFarmToLocal(farm, deletions) {
   const localTiles = readJson(LOCAL.tiles, {});
   const mergedTiles = mergeTileRecords(localTiles, farm.tiles, deletions);
 
+  // Only apply a valid cloud layout. Do not clear a local blueprint when remote layout is missing.
   if (layoutValid(farm.layout)) {
     writeJson(LOCAL.layout, layoutRecord(farm.layout));
-  } else if (!Object.keys(mergedTiles).length) {
-    localStorage.removeItem(LOCAL.layout);
   }
 
   if (farm.plantNames && typeof farm.plantNames === "object") {
@@ -682,17 +721,22 @@ async function commitOps(ops) {
   }
 }
 
-async function writeTiles(uid, tiles) {
-  const existing = await getDocs(tilesCol(uid));
-  const localIds = new Set(Object.keys(tiles || {}));
+async function writeTiles(uid, tiles, { pruneMissing = true } = {}) {
+  const tileMap = tiles && typeof tiles === "object" ? tiles : {};
+  const localIds = new Set(Object.keys(tileMap));
+  // Empty local tile map after sign-out must not delete every cloud tile.
+  if (!localIds.size && pruneMissing) return;
+  const existing = pruneMissing ? await getDocs(tilesCol(uid)) : null;
   const ops = [];
-  existing.forEach((snap) => {
-    if (!localIds.has(snap.id)) {
-      const ref = snap.ref;
-      ops.push((batch) => batch.delete(ref));
-    }
-  });
-  Object.entries(tiles || {}).forEach(([id, info]) => {
+  if (existing) {
+    existing.forEach((snap) => {
+      if (!localIds.has(snap.id)) {
+        const ref = snap.ref;
+        ops.push((batch) => batch.delete(ref));
+      }
+    });
+  }
+  Object.entries(tileMap).forEach(([id, info]) => {
     const ref = doc(tilesCol(uid), id);
     ops.push((batch) => batch.set(ref, tileForFirestore(info)));
   });
@@ -721,6 +765,8 @@ async function writeDeletions(uid, deletions) {
 async function writeUserDoc(uid, fields) {
   const payload = firestoreSafe(fields);
   if (!payload || !Object.keys(payload).length) return;
+  // Never merge layout:null — that wiped saved blueprints on refresh when local cache had profile but no layout yet.
+  if (payload.layout == null) delete payload.layout;
   await setDoc(userRef(uid), payload, { merge: true });
 }
 
@@ -741,7 +787,9 @@ async function readCloudBundle(uid) {
 
 function hasCloudData(bundle) {
   const user = bundle?.user;
-  if (user && (user.firstName || user.lastName || user.farmName || user.email || user.layout)) return true;
+  if (user && (user.firstName || user.lastName || user.farmName || user.email || layoutFromUserDoc(user))) {
+    return true;
+  }
   if (user?.plantNames && Object.keys(user.plantNames).length) return true;
   if (bundle?.tiles && Object.keys(bundle.tiles).length) return true;
   if (bundle?.deletions?.length) return true;
@@ -752,13 +800,14 @@ async function uploadLocalBundle(uid, email) {
   const profile = readLocalProfile(uid) || {};
   const farm = captureLocalFarm();
   const deletions = readLocalDeletions();
+  const layout = layoutRecord(farm.layout, { withUpdatedAt: true });
   const userFields = {
     ...profilePayload(profile, email),
-    layout: layoutRecord(farm.layout, { withUpdatedAt: true }),
     selectedFarmWeek: farm.selectedFarmWeek,
     plantNames: firestoreSafe(plantNamesForFirestore(farm.plantNames, farm.tiles)) || {},
     scanCalendar: readScanCalendar(),
   };
+  if (layout) userFields.layout = layout;
   await writeUserDoc(uid, userFields);
   await writeTiles(uid, farm.tiles);
   await writeDeletions(uid, deletions);
@@ -786,21 +835,45 @@ export async function bootstrapUserInRtdb(uid, email, profile = {}) {
   writeLocalProfile(uid, payload);
 }
 
+async function flushFarmSnapshotToRtdb(uid, snapshot) {
+  const id = uid || resolveSyncUid();
+  if (!id || !fs() || !snapshot) return;
+  const profile = snapshot.profile || readLocalProfile(id) || {};
+  const farm = snapshot.farm || {};
+  const deletions = Array.isArray(snapshot.deletions) ? snapshot.deletions : [];
+  const layout = layoutRecord(farm.layout, { withUpdatedAt: true });
+  const fields = {
+    ...profilePayload(profile, profile.email),
+    selectedFarmWeek: farm.selectedFarmWeek ?? FARM_WEEK_FIRST,
+    scanCalendar: snapshot.scanCalendar || readScanCalendar(),
+  };
+  if (layout) fields.layout = layout;
+  await writeUserDoc(id, fields);
+  const tileMap = farm.tiles && typeof farm.tiles === "object" ? farm.tiles : {};
+  if (Object.keys(tileMap).length) {
+    // Use captured plant names during sign-out — localStorage may already be cleared.
+    if (farm.plantNames && typeof farm.plantNames === "object") {
+      const names = firestoreSafe(plantNamesForFirestore(farm.plantNames, tileMap));
+      if (names && Object.keys(names).length) {
+        await writeUserDoc(id, { plantNames: names });
+      }
+    } else {
+      await writePlantNamesFromLocal(id);
+    }
+    await writeTiles(id, tileMap, { pruneMissing: true });
+  }
+  if (deletions.length) await writeDeletions(id, deletions);
+}
+
 export async function flushLocalFarmToRtdb(uid) {
   const id = uid || resolveSyncUid();
   if (!id || !fs()) return;
-  const profile = readLocalProfile(id) || {};
-  const farm = captureLocalFarm();
-  const deletions = readLocalDeletions();
-  await writeUserDoc(id, {
-    ...profilePayload(profile, profile.email),
-    layout: layoutRecord(farm.layout, { withUpdatedAt: true }),
-    selectedFarmWeek: farm.selectedFarmWeek,
+  return flushFarmSnapshotToRtdb(id, {
+    profile: readLocalProfile(id) || {},
+    farm: captureLocalFarm(),
+    deletions: readLocalDeletions(),
     scanCalendar: readScanCalendar(),
   });
-  await writePlantNamesFromLocal(id);
-  await writeTiles(id, farm.tiles);
-  await writeDeletions(id, deletions);
 }
 
 export async function hydrateUserFromRtdb(uid, email) {
@@ -811,9 +884,11 @@ export async function hydrateUserFromRtdb(uid, email) {
 
   activeUid = uid;
   const remote = await readCloudBundle(uid);
+  const hadLocalLayout = layoutValid(captureLocalFarm().layout);
 
   if (hasCloudData(remote)) {
     const changed = applyCloudBundle(uid, remote);
+    const restoredLayout = layoutValid(captureLocalFarm().layout);
     const local = readLocalProfile(uid) || {};
     const remoteName = remote.user?.firstName || remote.user?.lastName || remote.user?.farmName;
     if ((local.firstName || local.lastName || local.farmName) && !remoteName) {
@@ -826,7 +901,11 @@ export async function hydrateUserFromRtdb(uid, email) {
     } catch (err) {
       logCloudFailure("syncPlantNames", err);
     }
-    return { ok: true, source: "remote", changed: Boolean(changed) };
+    return {
+      ok: true,
+      source: "remote",
+      changed: Boolean(changed) || (!hadLocalLayout && restoredLayout),
+    };
   }
 
   const localFarm = captureLocalFarm();
@@ -1060,13 +1139,24 @@ function registerGlobalBridge() {
       });
     },
     whenReady() {
-      return hydratePromise;
+      // Wait for the first auth event so we don't resolve the module's initial empty promise
+      // before hydrateUserFromRtdb has been scheduled (that left the dashboard empty after login).
+      return firstAuthEvent.then(() => hydratePromise);
     },
     shouldRefreshUiForUserDataEvent(detail) {
       return shouldRefreshUiForUserDataEvent(detail);
     },
     notifyLocalChange(source) {
       notifyLocalFarmDataChange(source);
+    },
+    captureFarmSnapshot() {
+      const uid = resolveSyncUid();
+      return {
+        profile: uid ? readLocalProfile(uid) || {} : {},
+        farm: captureLocalFarm(),
+        deletions: readLocalDeletions(),
+        scanCalendar: readScanCalendar(),
+      };
     },
   };
 }
@@ -1085,29 +1175,43 @@ function runBlockingHydrate(uid, email, displayName) {
     })
     .then((result) => {
       afterHydrate(uid, displayName, result);
+      const layoutReady = layoutValid(captureLocalFarm().layout);
       dispatchUserDataReady(uid, displayName, {
         background: false,
-        changed: Boolean(result?.changed),
+        // Always refresh UI after a blocking cloud pull so the farm blueprint reappears after sign-in.
+        changed: Boolean(result?.changed) || layoutReady || result?.ok !== false,
       });
       return result;
     });
 }
 
 function runBackgroundHydrate(uid, email, displayName) {
-  return flushLocalFarmToRtdb(uid)
-    .catch((err) => {
-      logCloudFailure("flush-before-hydrate", err);
-    })
+  const hasLocalLayout = layoutValid(captureLocalFarm().layout);
+  // If local layout is missing, pull cloud first so we never flush an empty blueprint over Firebase.
+  const prepare = hasLocalLayout
+    ? flushLocalFarmToRtdb(uid).catch((err) => {
+        logCloudFailure("flush-before-hydrate", err);
+      })
+    : Promise.resolve();
+
+  return prepare
     .then(() => hydrateUserFromRtdb(uid, email))
     .catch((err) => {
       logCloudFailure("hydrate", err);
       return { ok: false, reason: err?.code || "hydrate-failed", error: err };
     })
-    .then((result) => {
+    .then(async (result) => {
+      if (!hasLocalLayout && result?.ok !== false) {
+        try {
+          await flushLocalFarmToRtdb(uid);
+        } catch (err) {
+          logCloudFailure("flush-after-hydrate", err);
+        }
+      }
       afterHydrate(uid, displayName, result);
       dispatchUserDataReady(uid, displayName, {
         background: true,
-        changed: Boolean(result?.changed),
+        changed: Boolean(result?.changed) || (!hasLocalLayout && layoutValid(captureLocalFarm().layout)),
       });
       return result;
     });
@@ -1124,8 +1228,15 @@ export function bindUserDataSync(auth) {
       const displayName = user.displayName || "";
       activeUid = uid;
 
-      if (hasLocalUserBundle(uid)) {
+      const localLayoutReady =
+        hasLocalUserBundle(uid) && layoutValid(captureLocalFarm().layout);
+
+      // Fast path only when the farm blueprint is already in localStorage.
+      // Cached profile alone used to skip blocking hydrate, so the dashboard stayed empty
+      // while a background flush could overwrite the cloud layout with null.
+      if (localLayoutReady) {
         hydratePromise = Promise.resolve({ ok: true, source: "local-cache" });
+        markFirstAuthEvent();
         const announce = () => dispatchUserDataReady(uid, displayName, { fromCache: true });
         if (typeof queueMicrotask === "function") queueMicrotask(announce);
         else window.setTimeout(announce, 0);
@@ -1134,17 +1245,28 @@ export function bindUserDataSync(auth) {
       }
 
       hydratePromise = runBlockingHydrate(uid, user.email, displayName);
+      markFirstAuthEvent();
       return;
     }
 
+    const uid = activeUid || resolveSyncUid();
+    const snapshot = uid
+      ? {
+          profile: readLocalProfile(uid) || {},
+          farm: captureLocalFarm(),
+          deletions: readLocalDeletions(),
+          scanCalendar: readScanCalendar(),
+        }
+      : null;
     hydratePromise = Promise.resolve();
     clearHydrateSession();
-    const uid = activeUid || resolveSyncUid();
-    const pending = uid ? flushLocalFarmToRtdb(uid) : Promise.resolve();
     clearLocalUserFarmData();
     window.dispatchEvent(new CustomEvent("tomatoInsight:userDataCleared"));
-    pending.catch((err) => {
-      logCloudFailure("flush-on-signout", err);
-    });
+    markFirstAuthEvent();
+    if (uid && snapshot) {
+      flushFarmSnapshotToRtdb(uid, snapshot).catch((err) => {
+        logCloudFailure("flush-on-signout", err);
+      });
+    }
   });
 }

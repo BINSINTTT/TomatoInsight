@@ -26,338 +26,389 @@
     </script>
   </head>
   <body class="auth-body auth-login-split auth-login-only">
-    <section class="gradient-form h-100">
-      <div class="container py-5 h-100">
-        <div class="row d-flex justify-content-center align-items-center h-100">
-          <div class="col-xl-10">
-            <div class="card rounded-3 text-black auth-split-card">
-              <div class="row g-0">
-                <div class="col-lg-6">
-                  <div class="card-body p-md-5 mx-md-4">
-                    <div class="text-center">
-                      <img
-                        class="auth-split-logo"
-                        src="../img/LogoTomatoInsight.png"
-                        width="220"
-                        height="auto"
-                        alt="TomatoInsight"
+    <section class="auth-signin" aria-label="Sign in">
+      <div class="auth-signin__shell auth-split-card" id="auth-split-card">
+        <div class="auth-signin__form-col">
+          <div class="auth-signin__form-inner">
+            <div class="auth-signin__brand text-center">
+              <img
+                class="auth-split-logo"
+                src="../img/LogoTomatoInsight.png"
+                width="180"
+                height="auto"
+                alt="TomatoInsight"
+              />
+            </div>
+
+            <div class="auth-panel-stage" id="auth-panel-stage">
+              <div class="auth-panel auth-panel--login" id="login-panel">
+                <form class="auth-form auth-form--split auth-form--signin" id="login-form" novalidate>
+                  <p class="auth-form__error" id="login-form-error" role="alert" hidden></p>
+                  <p class="auth-form__success" id="login-form-success" role="status" hidden></p>
+
+                  <div class="auth-signin__field">
+                    <label class="form-label auth-split-label" for="login-email">Email Address</label>
+                    <input
+                      type="email"
+                      class="form-control auth-split-input"
+                      id="login-email"
+                      name="email"
+                      autocomplete="email"
+                      inputmode="email"
+                      placeholder="Enter your email address"
+                      required
+                    />
+                  </div>
+
+                  <div class="auth-signin__field">
+                    <label class="form-label auth-split-label" for="login-password">Password</label>
+                    <div class="auth-field__input-wrap">
+                      <input
+                        type="password"
+                        class="form-control auth-split-input auth-split-input--toggle"
+                        id="login-password"
+                        name="password"
+                        autocomplete="current-password"
+                        placeholder="Enter your password"
+                        required
                       />
-
-                    </div>
-
-                    <div class="auth-panel-stage" id="auth-panel-stage">
-                      <div class="auth-panel auth-panel--login" id="login-panel">
-                        <form class="auth-form auth-form--split" id="login-form" novalidate>
-                          <p class="auth-split-lead mb-4">Please log in to your account</p>
-
-                          <p class="auth-form__error" id="login-form-error" role="alert" hidden></p>
-                          <p class="auth-form__success" id="login-form-success" role="status" hidden></p>
-
-                          <div class="mb-4">
-                            <label class="form-label auth-split-label" for="login-email">Email</label>
-                            <input
-                              type="email"
-                              class="form-control auth-split-input"
-                              id="login-email"
-                              name="email"
-                              autocomplete="email"
-                              inputmode="email"
-                              placeholder="you@gmail.com"
-                              required
-                            />
-                          </div>
-
-                          <div class="mb-4">
-                            <label class="form-label auth-split-label" for="login-password">Password</label>
-                            <div class="auth-field__input-wrap">
-                              <input
-                                type="password"
-                                class="form-control auth-split-input auth-split-input--toggle"
-                                id="login-password"
-                                name="password"
-                                autocomplete="current-password"
-                                placeholder="Password"
-                                required
-                              />
-                              <button
-                                type="button"
-                                class="auth-password-toggle"
-                                aria-label="Show password"
-                                aria-pressed="false"
-                                data-password-toggle
-                              >
-                                <span class="auth-password-toggle__icon auth-password-toggle__icon--show" aria-hidden="true">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                                    <circle cx="12" cy="12" r="3" />
-                                  </svg>
-                                </span>
-                                <span class="auth-password-toggle__icon auth-password-toggle__icon--hide" aria-hidden="true">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-                                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-                                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-                                    <line x1="2" x2="22" y1="2" y2="22" />
-                                  </svg>
-                                </span>
-                              </button>
-                            </div>
-                          </div>
-
-                          <div class="text-center pt-1 mb-4 pb-1">
-                            <button
-                              type="submit"
-                              class="btn btn-primary btn-lg w-100 gradient-custom-2 auth-split-submit mb-3"
-                            >
-                              Log in
-                            </button>
-                            <button type="button" class="auth-split-muted" data-auth-panel="forgot">
-                              Forgot password?
-                            </button>
-                            <p class="auth-server-note">The first sign-in after the site has been idle can take about a minute while the server wakes up.</p>
-                          </div>
-
-                          <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 pb-2">
-                            <p class="mb-0">Don&rsquo;t have an account?</p>
-                            <a
-                              class="btn btn-outline-danger auth-split-outline"
-                              href="login.html?signup=1"
-                              data-auth-panel="signup"
-                            >
-                              Create new
-                            </a>
-                          </div>
-                        </form>
-                      </div>
-
-                      <div class="auth-panel auth-panel--forgot" id="forgot-panel" inert>
-                        <form class="auth-form auth-form--split" id="forgot-password-form" novalidate>
-                          <p class="auth-split-lead mb-2">Forgot password?</p>
-                          <p class="auth-split-muted mb-4">
-                            Enter your account email and we&rsquo;ll send a link to choose a new password.
-                          </p>
-
-                          <p class="auth-form__error" id="forgot-password-form-error" role="alert" hidden></p>
-                          <p class="auth-form__success" id="forgot-password-form-success" role="status" hidden></p>
-
-                          <div class="mb-4">
-                            <label class="form-label auth-split-label" for="forgot-password-email">Email</label>
-                            <input
-                              type="email"
-                              class="form-control auth-split-input"
-                              id="forgot-password-email"
-                              name="email"
-                              autocomplete="email"
-                              inputmode="email"
-                              placeholder="you@gmail.com"
-                              required
-                            />
-                          </div>
-
-                          <div class="text-center pt-1 mb-3 pb-1">
-                            <button
-                              type="submit"
-                              class="btn btn-primary btn-lg w-100 gradient-custom-2 auth-split-submit mb-3"
-                            >
-                              Send reset email
-                            </button>
-                            <button type="button" class="auth-split-muted" data-auth-panel="login">
-                              Back to log in
-                            </button>
-                          </div>
-                        </form>
-                      </div>
-
-                      <div class="auth-panel auth-panel--signup" id="signup-panel" inert>
-                        <form class="auth-form auth-form--split auth-form--compact" id="signup-form" novalidate>
-                          <p class="auth-split-lead mb-3">Create your <span class="ti-brand"><span >TomatoInsight account</span></p>
-
-                          <p class="auth-form__error" id="signup-form-error" role="alert" hidden></p>
-
-                          <div class="row g-2 mb-2 auth-form__row--name">
-                            <div class="col-5">
-                              <label class="form-label auth-split-label mb-1" for="signup-first-name">First name</label>
-                              <input
-                                type="text"
-                                class="form-control auth-split-input"
-                                id="signup-first-name"
-                                name="firstName"
-                                autocomplete="given-name"
-                                required
-                              />
-                            </div>
-                            <div class="col-2">
-                              <label class="form-label auth-split-label mb-1" for="signup-middle-initial">M.I.</label>
-                              <input
-                                type="text"
-                                class="form-control auth-split-input text-center text-uppercase"
-                                id="signup-middle-initial"
-                                name="middleInitial"
-                                autocomplete="additional-name"
-                                maxlength="1"
-                                pattern="[A-Za-z]"
-                                inputmode="text"
-                                aria-label="Middle initial"
-                              />
-                            </div>
-                            <div class="col-5">
-                              <label class="form-label auth-split-label mb-1" for="signup-last-name">Last name</label>
-                              <input
-                                type="text"
-                                class="form-control auth-split-input"
-                                id="signup-last-name"
-                                name="lastName"
-                                autocomplete="family-name"
-                                required
-                              />
-                            </div>
-                          </div>
-
-                          <div class="mb-2">
-                            <label class="form-label auth-split-label mb-1" for="signup-email">Email</label>
-                            <input
-                              type="email"
-                              class="form-control auth-split-input"
-                              id="signup-email"
-                              name="email"
-                              autocomplete="email"
-                              inputmode="email"
-                              placeholder="you@email.com"
-                              required
-                            />
-                          </div>
-
-                          <div class="mb-2">
-                            <label class="form-label auth-split-label mb-1" for="signup-password">Password</label>
-                            <div class="auth-field__input-wrap">
-                              <input
-                                type="password"
-                                class="form-control auth-split-input auth-split-input--toggle"
-                                id="signup-password"
-                                name="password"
-                                autocomplete="new-password"
-                                required
-                                aria-describedby="password-rules"
-                              />
-                              <button
-                                type="button"
-                                class="auth-password-toggle"
-                                aria-label="Show password"
-                                aria-pressed="false"
-                                data-password-toggle
-                              >
-                                <span class="auth-password-toggle__icon auth-password-toggle__icon--show" aria-hidden="true">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                                    <circle cx="12" cy="12" r="3" />
-                                  </svg>
-                                </span>
-                                <span class="auth-password-toggle__icon auth-password-toggle__icon--hide" aria-hidden="true">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-                                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-                                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-                                    <line x1="2" x2="22" y1="2" y2="22" />
-                                  </svg>
-                                </span>
-                              </button>
-                            </div>
-                            <ul class="auth-password-rules auth-password-rules--split" id="password-rules" aria-live="polite" hidden>
-                              <li class="auth-password-rules__title">Password must include</li>
-                              <li data-rule="length">8+ characters</li>
-                              <li data-rule="lower">Lowercase (a–z)</li>
-                              <li data-rule="upper">Uppercase (A–Z)</li>
-                              <li data-rule="special">Special (!@#$…)</li>
-                            </ul>
-                          </div>
-
-                          <div class="mb-3">
-                            <label class="form-label auth-split-label mb-1" for="signup-confirm-password">Confirm password</label>
-                            <div class="auth-field__input-wrap">
-                              <input
-                                type="password"
-                                class="form-control auth-split-input auth-split-input--toggle"
-                                id="signup-confirm-password"
-                                name="confirmPassword"
-                                autocomplete="new-password"
-                                required
-                              />
-                              <button
-                                type="button"
-                                class="auth-password-toggle"
-                                aria-label="Show password"
-                                aria-pressed="false"
-                                data-password-toggle
-                              >
-                                <span class="auth-password-toggle__icon auth-password-toggle__icon--show" aria-hidden="true">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                                    <circle cx="12" cy="12" r="3" />
-                                  </svg>
-                                </span>
-                                <span class="auth-password-toggle__icon auth-password-toggle__icon--hide" aria-hidden="true">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-                                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-                                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-                                    <line x1="2" x2="22" y1="2" y2="22" />
-                                  </svg>
-                                </span>
-                              </button>
-                            </div>
-                          </div>
-
-                          <div class="text-center pt-1 mb-3 pb-1">
-                            <button
-                              type="submit"
-                              class="btn btn-primary btn-lg w-100 gradient-custom-2 auth-split-submit mb-2"
-                            >
-                              Sign up
-                            </button>
-                          </div>
-
-                          <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 pb-2">
-                            <p class="mb-0">Already have an account?</p>
-                            <a class="btn btn-outline-danger auth-split-outline" href="login.html" data-auth-panel="login">Log in</a>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
-
-                    <p class="text-center mt-3 mb-0">
-                      <a class="auth-split-muted small" href="landing.html">&larr; Back to home</a>
-                    </p>
-                  </div>
-                </div>
-
-                <div class="col-lg-6 d-flex align-items-center auth-hero-photo">
-                  <div class="auth-hero-copy text-white px-3 py-4 p-md-5 mx-md-4">
-                    <div class="auth-hero-copy__item auth-hero-copy__item--login" id="auth-hero-login">
-                      <h4 class="mb-4">Grow smarter, one leaf at a time</h4>
-                      <p class="small mb-0">
-                        <span class="ti-brand">Tomato<Insight</span></span> maps your farm tile by tile, validates every photo as a real
-                        tomato leaf, then scores it for disease &mdash; so you can treat problems early
-                        and keep a history for every plant you scan.
-                      </p>
-                    </div>
-                    <div class="auth-hero-copy__item auth-hero-copy__item--signup" id="auth-hero-signup" aria-hidden="true">
-                      <h4 class="mb-4">Start mapping your farm today</h4>
-                      <p class="small mb-0">
-                        One account gives you a tile-by-tile farm blueprint, guarded leaf scans, disease
-                        scores, care steps, and scan history &mdash; everything you need to catch problems
-                        early and track plants over time.
-                      </p>
+                      <button
+                        type="button"
+                        class="auth-password-toggle"
+                        aria-label="Show password"
+                        aria-pressed="false"
+                        data-password-toggle
+                      >
+                        <span class="auth-password-toggle__icon auth-password-toggle__icon--show" aria-hidden="true">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        </span>
+                        <span class="auth-password-toggle__icon auth-password-toggle__icon--hide" aria-hidden="true">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                            <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                            <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                            <line x1="2" x2="22" y1="2" y2="22" />
+                          </svg>
+                        </span>
+                      </button>
                     </div>
                   </div>
-                </div>
+
+                  <div class="auth-signin__meta">
+                    <label class="auth-remember">
+                      <input type="checkbox" id="login-remember" name="remember" checked />
+                      <span>Remember me</span>
+                    </label>
+                    <button type="button" class="auth-signin__forgot" data-auth-panel="forgot">
+                      Forgot password?
+                    </button>
+                  </div>
+
+                  <button type="submit" class="btn auth-signin__submit w-100">Sign In</button>
+
+                  <p class="auth-signin__footer">
+                    Don&rsquo;t have an account?
+                    <a href="login.html?signup=1" data-auth-panel="signup">Create Account</a>
+                  </p>
+                </form>
+              </div>
+
+              <div class="auth-panel auth-panel--forgot" id="forgot-panel" inert>
+                <form class="auth-form auth-form--split auth-form--signin" id="forgot-password-form" novalidate>
+                  <p class="auth-split-lead mb-2">Forgot password?</p>
+                  <p class="auth-split-muted mb-3">
+                    Enter your account email and we&rsquo;ll send a link to choose a new password.
+                  </p>
+
+                  <p class="auth-form__error" id="forgot-password-form-error" role="alert" hidden></p>
+                  <p class="auth-form__success" id="forgot-password-form-success" role="status" hidden></p>
+
+                  <div class="auth-signin__field">
+                    <label class="form-label auth-split-label" for="forgot-password-email">Email Address</label>
+                    <input
+                      type="email"
+                      class="form-control auth-split-input"
+                      id="forgot-password-email"
+                      name="email"
+                      autocomplete="email"
+                      inputmode="email"
+                      placeholder="Enter your email address"
+                      required
+                    />
+                  </div>
+
+                  <button type="submit" class="btn auth-signin__submit w-100">Send reset email</button>
+                  <button type="button" class="auth-signin__forgot auth-signin__forgot--center" data-auth-panel="login">
+                    Back to sign in
+                  </button>
+                </form>
+              </div>
+
+              <div class="auth-panel auth-panel--signup" id="signup-panel" inert>
+                <form class="auth-form auth-form--split auth-form--signin auth-form--signup" id="signup-form" novalidate>
+                  <p class="auth-form__error" id="signup-form-error" role="alert" hidden></p>
+
+                  <div class="auth-form__row auth-form__row--name">
+                    <div class="auth-signin__field">
+                      <label class="form-label auth-split-label" for="signup-first-name">First Name</label>
+                      <input
+                        type="text"
+                        class="form-control auth-split-input"
+                        id="signup-first-name"
+                        name="firstName"
+                        autocomplete="given-name"
+                        placeholder="First name"
+                        required
+                      />
+                    </div>
+                    <div class="auth-signin__field">
+                      <label class="form-label auth-split-label" for="signup-middle-initial">M.I.</label>
+                      <input
+                        type="text"
+                        class="form-control auth-split-input text-center text-uppercase"
+                        id="signup-middle-initial"
+                        name="middleInitial"
+                        autocomplete="additional-name"
+                        maxlength="1"
+                        pattern="[A-Za-z]"
+                        inputmode="text"
+                        placeholder="M"
+                        aria-label="Middle initial"
+                      />
+                    </div>
+                    <div class="auth-signin__field">
+                      <label class="form-label auth-split-label" for="signup-last-name">Last Name</label>
+                      <input
+                        type="text"
+                        class="form-control auth-split-input"
+                        id="signup-last-name"
+                        name="lastName"
+                        autocomplete="family-name"
+                        placeholder="Last name"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div class="auth-signin__field">
+                    <label class="form-label auth-split-label" for="signup-email">Email Address</label>
+                    <input
+                      type="email"
+                      class="form-control auth-split-input"
+                      id="signup-email"
+                      name="email"
+                      autocomplete="email"
+                      inputmode="email"
+                      placeholder="Enter your email address"
+                      required
+                    />
+                  </div>
+
+                  <div class="auth-signin__field">
+                    <label class="form-label auth-split-label" for="signup-password">Password</label>
+                    <div class="auth-field__input-wrap">
+                      <input
+                        type="password"
+                        class="form-control auth-split-input auth-split-input--toggle"
+                        id="signup-password"
+                        name="password"
+                        autocomplete="new-password"
+                        placeholder="Enter your password"
+                        required
+                        aria-describedby="password-rules"
+                      />
+                      <button
+                        type="button"
+                        class="auth-password-toggle"
+                        aria-label="Show password"
+                        aria-pressed="false"
+                        data-password-toggle
+                      >
+                        <span class="auth-password-toggle__icon auth-password-toggle__icon--show" aria-hidden="true">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        </span>
+                        <span class="auth-password-toggle__icon auth-password-toggle__icon--hide" aria-hidden="true">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                            <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                            <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                            <line x1="2" x2="22" y1="2" y2="22" />
+                          </svg>
+                        </span>
+                      </button>
+                    </div>
+                    <ul class="auth-password-rules auth-password-rules--split" id="password-rules" aria-live="polite" hidden>
+                      <li class="auth-password-rules__title">Password must include</li>
+                      <li data-rule="length">8+ characters</li>
+                      <li data-rule="lower">Lowercase (a–z)</li>
+                      <li data-rule="upper">Uppercase (A–Z)</li>
+                      <li data-rule="special">Special (!@#$…)</li>
+                    </ul>
+                  </div>
+
+                  <div class="auth-signin__field">
+                    <label class="form-label auth-split-label" for="signup-confirm-password">Confirm Password</label>
+                    <div class="auth-field__input-wrap">
+                      <input
+                        type="password"
+                        class="form-control auth-split-input auth-split-input--toggle"
+                        id="signup-confirm-password"
+                        name="confirmPassword"
+                        autocomplete="new-password"
+                        placeholder="Confirm your password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        class="auth-password-toggle"
+                        aria-label="Show password"
+                        aria-pressed="false"
+                        data-password-toggle
+                      >
+                        <span class="auth-password-toggle__icon auth-password-toggle__icon--show" aria-hidden="true">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                        </span>
+                        <span class="auth-password-toggle__icon auth-password-toggle__icon--hide" aria-hidden="true">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                            <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                            <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                            <line x1="2" x2="22" y1="2" y2="22" />
+                          </svg>
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <label class="auth-remember auth-terms">
+                    <input type="checkbox" id="signup-terms" name="terms" required />
+                    <span>I agree to the Terms and Conditions</span>
+                  </label>
+
+                  <button type="submit" class="btn auth-signin__submit w-100">Create Account</button>
+
+                  <p class="auth-signin__footer">
+                    Already have an account?
+                    <a href="login.html" data-auth-panel="login">Sign In</a>
+                  </p>
+                </form>
               </div>
             </div>
+
+            <p class="auth-signin__home">
+              <a class="auth-split-muted small" href="landing.html">&larr; Back to home</a>
+            </p>
           </div>
         </div>
+
+        <aside class="auth-slideshow" id="auth-slideshow" aria-roledescription="carousel" aria-label="TomatoInsight highlights">
+          <div class="auth-slideshow__viewport">
+            <div class="auth-slideshow__track" data-slideshow-track>
+              <article class="auth-slideshow__slide is-active" data-slideshow-slide aria-hidden="false">
+                <img src="../img/LoginImage.jpg" alt="Tomato plants growing in a farm field" />
+                <div class="auth-slideshow__caption auth-slideshow__caption--login">
+                  <h2 class="auth-slideshow__title">Grow smarter, one leaf at a time</h2>
+                  <p class="auth-slideshow__text">
+                    Map your farm tile by tile, validate every photo as a real tomato leaf, then score it for disease.
+                  </p>
+                </div>
+                <div class="auth-slideshow__caption auth-slideshow__caption--signup" aria-hidden="true">
+                  <h2 class="auth-slideshow__title">Join Our Community</h2>
+                  <p class="auth-slideshow__text">
+                    Become part of a thriving network of farmers dedicated to sustainable agriculture and healthier tomato crops.
+                  </p>
+                </div>
+              </article>
+              <article class="auth-slideshow__slide" data-slideshow-slide aria-hidden="true">
+                <img src="../img/Card00.jpg" alt="Close-up of a tomato leaf" />
+                <div class="auth-slideshow__caption auth-slideshow__caption--login">
+                  <h2 class="auth-slideshow__title">Leaf-first scanning</h2>
+                  <p class="auth-slideshow__text">
+                    TomatoInsight checks that each upload is a tomato leaf before classification starts.
+                  </p>
+                </div>
+                <div class="auth-slideshow__caption auth-slideshow__caption--signup" aria-hidden="true">
+                  <h2 class="auth-slideshow__title">Start scanning sooner</h2>
+                  <p class="auth-slideshow__text">
+                    Create an account to save tile layouts, scan history, and care recommendations in one place.
+                  </p>
+                </div>
+              </article>
+              <article class="auth-slideshow__slide" data-slideshow-slide aria-hidden="true">
+                <img src="../img/Card02.jpg" alt="Tomato leaf with visible disease symptoms" />
+                <div class="auth-slideshow__caption auth-slideshow__caption--login">
+                  <h2 class="auth-slideshow__title">Spot disease early</h2>
+                  <p class="auth-slideshow__text">
+                    See confidence scores for healthy leaves, yellow leaf curl, early blight, and spotted wilt.
+                  </p>
+                </div>
+                <div class="auth-slideshow__caption auth-slideshow__caption--signup" aria-hidden="true">
+                  <h2 class="auth-slideshow__title">Protect every plant</h2>
+                  <p class="auth-slideshow__text">
+                    Catch issues early with confidence scores and care steps tailored to each detected disease.
+                  </p>
+                </div>
+              </article>
+              <article class="auth-slideshow__slide" data-slideshow-slide aria-hidden="true">
+                <img src="../img/Healthy.png" alt="Healthy tomato leaf sample" />
+                <div class="auth-slideshow__caption auth-slideshow__caption--login">
+                  <h2 class="auth-slideshow__title">Care that matches the scan</h2>
+                  <p class="auth-slideshow__text">
+                    Open recommendations for every detected result so you can treat problems before they spread.
+                  </p>
+                </div>
+                <div class="auth-slideshow__caption auth-slideshow__caption--signup" aria-hidden="true">
+                  <h2 class="auth-slideshow__title">Guidance when you need it</h2>
+                  <p class="auth-slideshow__text">
+                    Get practical next steps for healthy plants and every disease TomatoInsight can detect.
+                  </p>
+                </div>
+              </article>
+              <article class="auth-slideshow__slide" data-slideshow-slide aria-hidden="true">
+                <img src="../img/Card04.jpg" alt="Tomato crop rows in sunlight" />
+                <div class="auth-slideshow__caption auth-slideshow__caption--login">
+                  <h2 class="auth-slideshow__title">Track every plant over time</h2>
+                  <p class="auth-slideshow__text">
+                    Keep scan history by week and tile so you can compare plant health across the season.
+                  </p>
+                </div>
+                <div class="auth-slideshow__caption auth-slideshow__caption--signup" aria-hidden="true">
+                  <h2 class="auth-slideshow__title">Grow with your farm</h2>
+                  <p class="auth-slideshow__text">
+                    Build a season-long record of scans so you can see what improves and what needs attention.
+                  </p>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <button type="button" class="auth-slideshow__nav auth-slideshow__nav--prev" data-slideshow-prev aria-label="Previous slide">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+          <button type="button" class="auth-slideshow__nav auth-slideshow__nav--next" data-slideshow-next aria-label="Next slide">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+
+          <div class="auth-slideshow__dots" data-slideshow-dots role="tablist" aria-label="Slide indicators"></div>
+        </aside>
       </div>
     </section>
 
     <script src="../js/Authentication/auth-password.js"></script>
+    <script src="../js/Authentication/auth-slideshow.js"></script>
     <script type="module" src="../js/Firebase/firebase-auth.module.js"></script>
     <script src="../js/Authentication/auth-forms.js"></script>
   </body>

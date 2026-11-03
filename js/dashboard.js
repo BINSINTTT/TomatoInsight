@@ -287,12 +287,15 @@
     const top = window.TilePlantStorage?.findTopScore?.(scores);
     const existing = activeTileNum == null ? null : window.TilePlantStorage?.get?.(activeTileNum);
     const calendar = window.TomatoInsightScanCalendar;
-    const scanDayIso =
-      calendar?.read?.()?.enabled && calendar?.isoFromDate
-        ? calendar.isoFromDate(new Date())
-        : "";
+    const schedule = calendar?.read?.();
+    const customEnabled = Boolean(schedule?.enabled);
+    const scanDayIso = customEnabled
+      ? calendar.scanDayIsoForSave?.() || schedule.selected || schedule.anchor || calendar.isoFromDate?.(new Date()) || ""
+      : "";
+    const savedAt =
+      (customEnabled && calendar.savedAtForScan?.()) || new Date().toISOString();
     return {
-      savedAt: new Date().toISOString(),
+      savedAt,
       scanDayIso,
       weekNumber: weekNumberForSave(existing),
       plantName: activePlantName(),
@@ -1288,15 +1291,16 @@
   }
 
   window.addEventListener("tomatoInsight:userDataReady", (event) => {
-    const shouldRefresh = window.TomatoInsightUserData?.shouldRefreshUiForUserDataEvent?.(
-      event.detail
-    );
-    if (shouldRefresh === false) return;
+    const detail = event.detail || {};
+    const shouldRefresh = window.TomatoInsightUserData?.shouldRefreshUiForUserDataEvent?.(detail);
+    // Always apply cloud hydrate results. Skip only pure local-cache announces when the grid is already up.
+    if (shouldRefresh === false && detail.fromCache && layout) return;
     reloadFarmFromStorage();
   });
   window.addEventListener("tomatoInsight:userDataCleared", reloadFarmFromStorage);
   window.addEventListener("tomatoInsight:farmDataChanged", (event) => {
-    if (event.detail?.source === "layout") return;
+    // Local layout save already re-renders; still reload for cloud/other sources.
+    if (event.detail?.source === "layout" && event.detail?.local) return;
     reloadFarmFromStorage();
   });
 

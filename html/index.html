@@ -484,38 +484,60 @@
         </header>
         <div class="modal__body">
           <p class="modal__intro" id="out-of-credit-desc">
-            Each saved scan uses 1 credit. Pick a pack to open the free demo checkout (Pay $0).
+            Each saved scan uses 1 credit. Pick a pack in Philippine pesos to open the free demo checkout (Pay ₱0).
           </p>
           <ul class="out-of-credit-plans" role="list">
             <li class="out-of-credit-plan">
-              <div class="out-of-credit-plan__head">
-                <span class="out-of-credit-plan__name">Starter</span>
-                <span class="out-of-credit-plan__credits">10 credits</span>
+              <div class="out-of-credit-plan__intro">
+                <h3 class="out-of-credit-plan__name">Starter</h3>
+                <p class="out-of-credit-plan__audience">Small farms getting started</p>
               </div>
-              <p class="out-of-credit-plan__price"><span class="out-of-credit-plan__amount">$4.99</span></p>
-              <p class="out-of-credit-plan__note">About $0.50 per scan</p>
-              <button type="button" class="out-of-credit-plan__btn" data-credit-pack="starter">Continue to checkout</button>
+              <p class="out-of-credit-plan__price">
+                <span class="out-of-credit-plan__amount">₱49</span>
+                <span class="out-of-credit-plan__period">/pack</span>
+              </p>
+              <ul class="out-of-credit-plan__features">
+                <li>10 scan credits</li>
+                <li>Leaf disease classification</li>
+                <li>Care recommendations</li>
+              </ul>
+              <button type="button" class="out-of-credit-plan__btn" data-credit-pack="starter">Choose Plan</button>
             </li>
             <li class="out-of-credit-plan out-of-credit-plan--featured">
-              <span class="out-of-credit-plan__badge">Popular</span>
-              <div class="out-of-credit-plan__head">
-                <span class="out-of-credit-plan__name">Grower</span>
-                <span class="out-of-credit-plan__credits">25 credits</span>
+              <span class="out-of-credit-plan__badge">Most Popular</span>
+              <div class="out-of-credit-plan__intro">
+                <h3 class="out-of-credit-plan__name">Grower</h3>
+                <p class="out-of-credit-plan__audience">Busy farms with regular scans</p>
               </div>
-              <p class="out-of-credit-plan__price"><span class="out-of-credit-plan__amount">$9.99</span></p>
-              <p class="out-of-credit-plan__note">About $0.40 per scan</p>
+              <p class="out-of-credit-plan__price">
+                <span class="out-of-credit-plan__amount">₱99</span>
+                <span class="out-of-credit-plan__period">/pack</span>
+              </p>
+              <ul class="out-of-credit-plan__features">
+                <li>25 scan credits</li>
+                <li>History &amp; monitoring</li>
+                <li>Week reminders</li>
+                <li>~₱4.00 per scan</li>
+              </ul>
               <button type="button" class="out-of-credit-plan__btn out-of-credit-plan__btn--primary" data-credit-pack="grower">
-                Continue to checkout
+                Get started
               </button>
             </li>
             <li class="out-of-credit-plan">
-              <div class="out-of-credit-plan__head">
-                <span class="out-of-credit-plan__name">Season</span>
-                <span class="out-of-credit-plan__credits">50 credits</span>
+              <div class="out-of-credit-plan__intro">
+                <h3 class="out-of-credit-plan__name">Season</h3>
+                <p class="out-of-credit-plan__audience">Full-season coverage</p>
               </div>
-              <p class="out-of-credit-plan__price"><span class="out-of-credit-plan__amount">$17.99</span></p>
-              <p class="out-of-credit-plan__note">About $0.36 per scan</p>
-              <button type="button" class="out-of-credit-plan__btn" data-credit-pack="season">Continue to checkout</button>
+              <p class="out-of-credit-plan__price">
+                <span class="out-of-credit-plan__amount">₱149</span>
+                <span class="out-of-credit-plan__period">/pack</span>
+              </p>
+              <ul class="out-of-credit-plan__features">
+                <li>50 scan credits</li>
+                <li>Best value (~₱3 / scan)</li>
+                <li>All Grower features</li>
+              </ul>
+              <button type="button" class="out-of-credit-plan__btn" data-credit-pack="season">Choose Plan</button>
             </li>
           </ul>
           <p class="out-of-credit-modal__footnote">
@@ -551,7 +573,7 @@
       </div>
     </div>
 
-    <script src="../js/TomatoValidator/roboflow-config.js"></script>
+    <script src="../js/TomatoValidator/validation-config.js"></script>
     <script src="../js/DiseaseClassification/disease-classification-config.js"></script>
     <script src="../js/DiseaseClassification/disease-classification.js"></script>
     <script src="../js/Groq/groq-config.js"></script>

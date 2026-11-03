@@ -77,6 +77,15 @@
       });
     }
 
+    if (Array.isArray(payload.predictions)) {
+      payload.predictions.forEach((item) => {
+        append(
+          item?.name || item?.class_name || item?.class || item?.label,
+          item?.confidence ?? item?.score ?? 0
+        );
+      });
+    }
+
     return results.sort((a, b) => b.confidence - a.confidence);
   }
 
