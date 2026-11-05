@@ -100,19 +100,42 @@
     });
   }
 
+  function popupDateLabel() {
+    const calendar = window.TomatoInsightScanCalendar;
+    const iso = calendar?.asOfIso?.() || "";
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    const date = match
+      ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+      : new Date();
+    try {
+      return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric" })
+        .format(date)
+        .toUpperCase();
+    } catch {
+      return "";
+    }
+  }
+
   function renderTilePopup(popup, tileNum, messages) {
     const title = archive.escapeHtml(tileLabel(tileNum));
+    const dateLabel = archive.escapeHtml(popupDateLabel());
     const body = messages.length
       ? `<ul class="farm-tile__notify-popup__list">${messages
-          .map((text) => `<li class="farm-tile__notify-popup__item">${archive.escapeHtml(text)}</li>`)
+          .map(
+            (text) =>
+              `<li class="farm-tile__notify-popup__item">` +
+              `<span class="farm-tile__notify-popup__dot" aria-hidden="true"></span>` +
+              `<span class="farm-tile__notify-popup__text">${archive.escapeHtml(text)}</span>` +
+              `</li>`
+          )
           .join("")}</ul>`
-      : `<p class="farm-tile__notify-popup__empty">No notifications.</p>`;
+      : `<p class="farm-tile__notify-popup__empty">No notifications for this plant right now.</p>`;
     popup.innerHTML =
-      `<div class="farm-tile__notify-popup__head">` +
+      `<img class="farm-tile__notify-popup__logo" src="../img/LogoTomatoInsight.png" alt="" width="72" height="72" />` +
+      (dateLabel ? `<p class="farm-tile__notify-popup__date">${dateLabel}</p>` : "") +
       `<p class="farm-tile__notify-popup__title">${title}</p>` +
-      `<button type="button" class="farm-tile__notify-popup__close" aria-label="Close notifications">×</button>` +
-      `</div>` +
-      body;
+      body +
+      `<button type="button" class="farm-tile__notify-popup__close">Close</button>`;
     popup.querySelector(".farm-tile__notify-popup__close")?.addEventListener("click", (event) => {
       event.stopPropagation();
       closeAllTilePopups();
@@ -130,7 +153,7 @@
       const countEl = btn.querySelector(".farm-tile__notify-count");
       if (countEl) {
         countEl.hidden = noticeCount === 0;
-        countEl.textContent = String(noticeCount);
+        countEl.textContent = String(Math.min(noticeCount, 9));
       }
       btn.classList.toggle("farm-tile__notify--active", noticeCount > 0);
       const label = tileLabel(tileNum);
