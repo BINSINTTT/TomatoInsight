@@ -1,0 +1,56 @@
+# Built application files
+*.apk
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+build/
+.gradle/
+local.properties
+
+# Signing
+*.jks
+*.keystore
+keystore.properties
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+.DS_Store
+
+# Captures / logs
+captures/
+*.log
+
+# Native
+.externalNativeBuild/
+.cxx/
+obj/
+
+# Python / server venv (keep server source, ignore env)
+venv/
+server/venv/
+**/__pycache__/
+*.pyc
+.env
+.env.*
+
+# Large / generated docs artifacts
+*.docx
+
+# OS
+Thumbs.db
+desktop.ini

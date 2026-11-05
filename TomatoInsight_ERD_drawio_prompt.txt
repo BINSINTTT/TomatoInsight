@@ -1,0 +1,121 @@
+DRAW.IO / DIAGRAMS.NET — ERD PROMPT
+=================================
+
+Copy everything below the line into draw.io AI, ChatGPT, or any diagram assistant,
+OR use the Mermaid file instead (recommended).
+
+----------------------------------------------------------------------
+Create a clean Entity-Relationship Diagram (ERD) for the TomatoInsight system.
+
+Style:
+- Crow’s Foot notation
+- One box per entity
+- Show PK and FK clearly
+- Use Philippine Peso (PHP) on Payment
+- Landscape layout, readable spacing
+- Title: TomatoInsight ERD
+
+Entities and attributes:
+
+1) USER
+PK: userID (VARCHAR)
+Attributes: firstName, middleInitial, lastName, email (UNIQUE), password,
+farmName, profileImage, selectedFarmWeek, createdAt, updatedAt
+
+2) CREDITS
+PK: creditID (INT)
+FK: userID → USER.userID (UNIQUE, 1:1)
+Attributes: balance, signupGranted, profileBonusGranted, updatedAt
+
+3) FARMLAYOUT
+PK: layoutID (INT)
+FK: userID → USER.userID (UNIQUE, 1:1)
+Attributes: rows, columns, updatedAt
+
+4) PLANT
+PK: plantID (INT)
+FK: userID → USER.userID (1:N)
+Attributes: tileNumber, plantName, status, updatedAt, createdAt
+
+5) SCANCALENDAR
+PK: calendarID (INT)
+FK: userID → USER.userID (UNIQUE, 1:1)
+Attributes: enabled, anchor, nextDue, selected
+
+6) SCAN
+PK: scanID (INT)
+FK: userID → USER.userID
+FK: plantID → PLANT.plantID
+Attributes: tileNumber, weekNumber, imagePath, topBarKey, topPct,
+healthyPct, tlcvPct, earlyBlightPct, spottedWiltPct, savedAt
+
+7) RECOMMENDATION
+PK: recommendationID (INT)
+FK: userID → USER.userID
+FK: plantID → PLANT.plantID
+FK: scanID → SCAN.scanID (optional)
+Attributes: diseaseName, urgencyNote, summary, actionSteps, preventionTips,
+isCriticalRemoval, topBarKey, topPct, weekNumber, source, savedAt
+
+8) PLANTDELETION
+PK: deletionID (VARCHAR)
+FK: userID → USER.userID
+FK: plantID → PLANT.plantID (optional)
+Attributes: tileNumber, plantName, deletedAt
+
+9) PAYMENT
+PK: paymentID (VARCHAR)
+FK: userID → USER.userID
+Attributes: email, packId, packName, credits, listPricePhp, amountChargedPhp,
+currency (PHP), status, method, isDemo, balanceBefore, balanceAfter, createdAt
+
+10) NOTIFICATION
+PK: notificationID (INT)
+FK: userID → USER.userID
+FK: plantID → PLANT.plantID (optional)
+FK: scanID → SCAN.scanID (optional)
+Attributes: title, message, type (disease_alert / scan_reminder),
+weekNumber, isRead, createdAt
+
+Relationships:
+- USER 1 — 1 CREDITS
+- USER 1 — 1 FARMLAYOUT
+- USER 1 — 1 SCANCALENDAR
+- USER 1 — * PLANT
+- USER 1 — * SCAN
+- USER 1 — * RECOMMENDATION
+- USER 1 — * PLANTDELETION
+- USER 1 — * PAYMENT
+- USER 1 — * NOTIFICATION
+- PLANT 1 — * SCAN
+- PLANT 1 — * RECOMMENDATION
+- PLANT 1 — 0..1 PLANTDELETION
+- PLANT 1 — * NOTIFICATION
+- SCAN 1 — 0..1 RECOMMENDATION
+- SCAN 1 — * NOTIFICATION
+
+Do not invent extra tables beyond these. Do not use USD. Do not include phone or datePlanted.
+----------------------------------------------------------------------
+
+
+HOW TO IMPORT INTO DRAW.IO (RECOMMENDED)
+========================================
+
+Method A — Mermaid (best):
+1. Open https://app.diagrams.net (or draw.io desktop)
+2. Blank Diagram
+3. Arrange → Insert → Advanced → Mermaid...
+4. Paste the full contents of TomatoInsight_ERD.mmd
+5. Click Insert
+6. Adjust spacing / colors as needed
+7. File → Export as → PNG / PDF / SVG / .drawio
+
+Method B — Prompt:
+1. Open draw.io
+2. If AI assistant is available, paste the prompt above
+3. Or paste the prompt into ChatGPT and ask for draw.io XML / Mermaid,
+   then import that result
+
+Method C — Open ready file:
+1. File → Open from → Device
+2. Select TomatoInsight_ERD.drawio

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="tomato_red">#FFE53935</color>
+    <!-- Soft pink information card (shade notification). -->
+    <color name="notification_card_bg">#FFFFE8E8</color>
+    <color name="notification_icon_square">#FFFF4D4D</color>
+    <color name="notification_title">#FF222222</color>
+    <color name="notification_body">#FFFF4D4D</color>
+    <!-- Kept for older references / status accent. -->
+    <color name="notification_date">#FFFF4D4D</color>
+</resources>

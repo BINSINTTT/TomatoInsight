@@ -1,0 +1,140 @@
+erDiagram
+    USER ||--|| CREDITS : has
+    USER ||--|| FARMLAYOUT : configures
+    USER ||--|| SCANCALENDAR : schedules
+    USER ||--o{ PLANT : owns
+    USER ||--o{ SCAN : performs
+    USER ||--o{ RECOMMENDATION : receives
+    USER ||--o{ PLANTDELETION : archives
+    USER ||--o{ PAYMENT : makes
+    USER ||--o{ NOTIFICATION : receives
+    PLANT ||--o{ SCAN : undergoes
+    PLANT ||--o{ RECOMMENDATION : has
+    PLANT ||--o| PLANTDELETION : may_have
+    PLANT ||--o{ NOTIFICATION : triggers
+    SCAN ||--o| RECOMMENDATION : generates
+    SCAN ||--o{ NOTIFICATION : may_trigger
+
+    USER {
+        VARCHAR userID PK
+        VARCHAR firstName
+        VARCHAR middleInitial
+        VARCHAR lastName
+        VARCHAR email UK
+        VARCHAR password
+        VARCHAR farmName
+        TEXT profileImage
+        INT selectedFarmWeek
+        DATETIME createdAt
+        DATETIME updatedAt
+    }
+
+    CREDITS {
+        INT creditID PK
+        VARCHAR userID FK
+        INT balance
+        BOOLEAN signupGranted
+        BOOLEAN profileBonusGranted
+        DATETIME updatedAt
+    }
+
+    FARMLAYOUT {
+        INT layoutID PK
+        VARCHAR userID FK
+        INT rows
+        INT columns
+        DATETIME updatedAt
+    }
+
+    PLANT {
+        INT plantID PK
+        VARCHAR userID FK
+        INT tileNumber
+        VARCHAR plantName
+        VARCHAR status
+        DATETIME updatedAt
+        DATETIME createdAt
+    }
+
+    SCANCALENDAR {
+        INT calendarID PK
+        VARCHAR userID FK
+        BOOLEAN enabled
+        DATE anchor
+        DATE nextDue
+        DATE selected
+    }
+
+    SCAN {
+        INT scanID PK
+        VARCHAR userID FK
+        INT plantID FK
+        INT tileNumber
+        INT weekNumber
+        TEXT imagePath
+        VARCHAR topBarKey
+        DECIMAL topPct
+        DECIMAL healthyPct
+        DECIMAL tlcvPct
+        DECIMAL earlyBlightPct
+        DECIMAL spottedWiltPct
+        DATETIME savedAt
+    }
+
+    RECOMMENDATION {
+        INT recommendationID PK
+        VARCHAR userID FK
+        INT plantID FK
+        INT scanID FK
+        VARCHAR diseaseName
+        VARCHAR urgencyNote
+        TEXT summary
+        TEXT actionSteps
+        TEXT preventionTips
+        BOOLEAN isCriticalRemoval
+        VARCHAR topBarKey
+        DECIMAL topPct
+        INT weekNumber
+        VARCHAR source
+        DATETIME savedAt
+    }
+
+    PLANTDELETION {
+        VARCHAR deletionID PK
+        VARCHAR userID FK
+        INT plantID FK
+        INT tileNumber
+        VARCHAR plantName
+        DATETIME deletedAt
+    }
+
+    PAYMENT {
+        VARCHAR paymentID PK
+        VARCHAR userID FK
+        VARCHAR email
+        VARCHAR packId
+        VARCHAR packName
+        INT credits
+        DECIMAL listPricePhp
+        DECIMAL amountChargedPhp
+        VARCHAR currency
+        VARCHAR status
+        VARCHAR method
+        BOOLEAN isDemo
+        INT balanceBefore
+        INT balanceAfter
+        DATETIME createdAt
+    }
+
+    NOTIFICATION {
+        INT notificationID PK
+        VARCHAR userID FK
+        INT plantID FK
+        INT scanID FK
+        VARCHAR title
+        TEXT message
+        VARCHAR type
+        INT weekNumber
+        BOOLEAN isRead
+        DATETIME createdAt
+    }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "94482037634",
+    "project_id": "tomatoinsight-ee041",
+    "storage_bucket": "tomatoinsight-ee041.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:94482037634:android:eb91e30319cff555c52d9b",
+        "android_client_info": {
+          "package_name": "com.tomatoinsight"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBn6q0xZLr47zyuhMTcaolginXrDY-F7IU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

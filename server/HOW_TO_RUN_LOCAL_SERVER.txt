@@ -1,0 +1,179 @@
+TomatoInsight — How to run the local Python server
+===================================================
+
+Use this when testing AI tomato-leaf validation on the Android app.
+The phone sends an image to this PC. Python calls the same Ultralytics
+models as the website: leaf validation first, then disease classification
+only when the top class is TomatoLeaf.
+
+
+1. REQUIREMENTS
+---------------
+- Python 3 installed (python --version)
+- Internet on the PC (needed to call Ultralytics)
+- Phone and PC on the SAME Wi-Fi (for a real device)
+- Ultralytics API keys for the leaf model and the disease model
+
+
+2. OPEN TERMINAL IN THE SERVER FOLDER
+-------------------------------------
+cd C:\Users\SPARK-PC-05\Desktop\TomatoInsightMObileApplication\server
+
+
+3. CREATE / ACTIVATE VIRTUAL ENVIRONMENT (first time only)
+----------------------------------------------------------
+python -m venv venv
+venv\Scripts\activate
+
+If you already created venv before, only run:
+venv\Scripts\activate
+
+You should see (venv) at the start of the line.
+
+
+4. INSTALL PACKAGES (first time, or after requirements.txt changes)
+-------------------------------------------------------------------
+pip install -r requirements.txt
+
+
+5. CREATE THE .env FILE
+-----------------------
+If .env does not exist yet:
+
+copy .env.example .env
+
+Then open .env in Notepad and set the same Ultralytics values as the website:
+
+ULTRALYTICS_VALIDATION_URL=leaf model /predict URL
+ULTRALYTICS_VALIDATION_API_KEY=leaf model key
+ULTRALYTICS_PREDICT_URL=disease model /predict URL
+ULTRALYTICS_API_KEY=disease model key
+VALIDATOR_MIN_CONFIDENCE=0.50
+
+Do NOT upload .env to GitHub.
+
+
+6. START THE SERVER
+-------------------
+python app.py
+
+Leave this terminal OPEN. Do not close it while testing the app.
+
+You should see something like:
+  Running on http://127.0.0.1:5000
+  Running on http://192.168.x.x:5000
+
+
+7. TEST THE SERVER IN THE PC BROWSER
+------------------------------------
+Open:
+  http://localhost:5000/health
+
+You want JSON like:
+  "status": "ok"
+  "api_key_configured": true
+
+If validation_configured is false, set the leaf model URL and key in .env and
+restart python app.py (Ctrl+C, then python app.py again).
+
+
+8. POINT THE ANDROID APP TO THIS PC
+-----------------------------------
+Open this file in Android Studio:
+  app/src/main/kotlin/com/tomatoinsight/api/ApiConfig.kt
+
+Set VALIDATION_SERVER_URL:
+
+  Real phone (same Wi-Fi as PC):
+    const val VALIDATION_SERVER_URL = "http://YOUR_PC_IP:5000/"
+
+  Android emulator:
+    const val VALIDATION_SERVER_URL = "http://10.0.2.2:5000/"
+
+Find YOUR_PC_IP:
+  Open Command Prompt and run: ipconfig
+  Use the IPv4 Address of your Wi-Fi adapter.
+  Example: http://192.168.100.8:5000/
+
+Keep the slash at the end.
+
+Then Rebuild / Run the app in Android Studio.
+
+
+9. OPTIONAL — ALLOW WINDOWS FIREWALL (real phone only)
+------------------------------------------------------
+If the phone cannot connect, allow port 5000:
+
+netsh advfirewall firewall add rule name="TomatoInsight Local" dir=in action=allow protocol=TCP localport=5000
+
+Also test this URL on the PHONE browser:
+  http://YOUR_PC_IP:5000/health
+
+If the phone browser cannot open it, the app will fail too.
+
+
+10. TEST IN THE MOBILE APP
+--------------------------
+1. Keep python app.py running
+2. Open TomatoInsight -> Plant Information
+3. Capture or upload a tomato leaf photo
+4. Tap "Validate Tomato Leaf"
+5. Wait 10-30 seconds
+
+Expected:
+  Tomato leaf photo  ->  Tomato Leaf Detected
+  Non-tomato photo   ->  Not a Tomato Leaf
+
+Watch the Python terminal. A successful test looks like:
+  POST /validate HTTP/1.1" 200
+  PARSED DETECTIONS: 1 (or 2)
+    -> TomatoInsightImageValidation 0.72
+
+
+11. STOP THE SERVER
+-------------------
+In the Python terminal press Ctrl+C.
+
+
+TROUBLESHOOTING
+---------------
+Connection error / cannot reach server
+  - python app.py is not running
+  - Wrong IP in ApiConfig.kt
+  - Phone not on same Wi-Fi as PC
+  - Windows Firewall blocking port 5000
+  - App still using an old URL (rebuild the app, or clear app data)
+
+HTTP 503 or "Service Suspended"
+  - App is still calling Render, not this PC
+  - Check ApiConfig.kt uses http://YOUR_PC_IP:5000/
+  - Rebuild and run the app again
+
+api_key_configured is false
+  - Edit .env and paste a real Roboflow private key
+  - Restart python app.py
+
+Not a Tomato Leaf on a real leaf (Roboflow website detects it)
+  - Restart python app.py so the latest app.py is loaded
+  - Check terminal for PARSED DETECTIONS
+  - PC must have internet so Roboflow can run
+
+Always detects tomato on random photos
+  - Model training issue (add unlabeled non-tomato images in Roboflow)
+  - Not a local-server setup problem
+
+After editing app.py or .env
+  - Stop the server (Ctrl+C)
+  - Run python app.py again
+
+
+LOCAL vs RENDER
+---------------
+Local (this guide):
+  python app.py on your PC
+  No wake-up delay
+  Fastest for development
+
+Render (cloud):
+  Needs internet + wake-up on free tier
+  Use later when you want testing without the PC running

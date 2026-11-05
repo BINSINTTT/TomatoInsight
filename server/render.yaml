@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: tomatoinsight-api
+    runtime: python
+    rootDir: server
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1
+    plan: free
+    envVars:
+      - key: ULTRALYTICS_VALIDATION_URL
+        sync: false
+      - key: ULTRALYTICS_VALIDATION_API_KEY
+        sync: false
+      - key: ULTRALYTICS_PREDICT_URL
+        sync: false
+      - key: ULTRALYTICS_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
+      - key: VALIDATOR_MIN_CONFIDENCE
+        value: "0.80"
+      - key: DISEASE_CLASSES
+        value: Early blight,Spotted wilt,Yellow leaf curl virus,Healthy
+      - key: DISEASE_MIN_CONFIDENCE
+        value: "0.01"
