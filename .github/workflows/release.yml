@@ -36,26 +36,46 @@ jobs:
       - name: Grant Gradle execute permission
         run: chmod +x gradlew
 
-      - name: Decode release keystore (optional)
+      - name: Prepare signing keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
             echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$GITHUB_WORKSPACE/release.keystore"
-            echo "KEYSTORE_FILE=$GITHUB_WORKSPACE/release.keystore" >> "$GITHUB_ENV"
-            echo "Using custom release keystore"
+            {
+              echo "KEYSTORE_FILE=$GITHUB_WORKSPACE/release.keystore"
+              echo "KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
+              echo "KEY_ALIAS=$ANDROID_KEY_ALIAS"
+              echo "KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "Using custom release keystore from secrets"
           else
-            echo "No ANDROID_KEYSTORE_BASE64 secret — signing with debug keystore fallback"
+            KEYSTORE="$GITHUB_WORKSPACE/ci-debug.keystore"
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE" \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=TomatoInsight CI,O=TomatoInsight,C=PH"
+            {
+              echo "KEYSTORE_FILE=$KEYSTORE"
+              echo "KEYSTORE_PASSWORD=android"
+              echo "KEY_ALIAS=androiddebugkey"
+              echo "KEY_PASSWORD=android"
+            } >> "$GITHUB_ENV"
+            echo "Generated CI keystore for GitHub Releases sideloading"
           fi
 
       - name: Accept Android licenses
         run: yes | sdkmanager --licenses >/dev/null || true
 
       - name: Build release APK
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Rename APK for release
