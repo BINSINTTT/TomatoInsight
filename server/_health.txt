@@ -1,1 +1,1 @@
-{"api_key_configured":true,"status":"ok","workflow_url":"https://serverless.roboflow.com/vincent-vfqqy/workflows/tomatoinsightimagevalidation"}
+﻿{"status":"ok","validation_model":"ultralytics"}

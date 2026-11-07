@@ -142,21 +142,38 @@ def _find_top(scores: dict[str, float]) -> dict[str, Any] | None:
     }
 
 
-def _severity_label(bar_key: str, pct: float) -> str:
+def _severity_label(bar_key: str, symptom_pct: float) -> str:
+    """Symptom extent bands (not AI confidence): Mild 1–33%, Moderate 34–66%, Severe 67–100%."""
     if bar_key == "healthy":
         return "Healthy"
-    if pct >= 80:
+    if symptom_pct >= 67:
         return "Severe"
-    if pct >= 50:
+    if symptom_pct >= 34:
         return "Moderate"
     return "Mild"
 
 
-def _build_user_message(scores: dict[str, float], top: dict[str, Any]) -> str:
+def _resolve_severity_pct(scores: dict[str, float], bar_key: str, severity_pct: float | None) -> float:
+    if bar_key == "healthy":
+        return 0.0
+    if severity_pct is not None and severity_pct >= 0:
+        return min(100.0, float(severity_pct))
+    healthy = float(scores.get("healthy") or 0)
+    disease_sum = sum(float(scores.get(key) or 0) for key in ("tlcv", "early_blight", "spotted_wilt"))
+    total = healthy + disease_sum
+    if total <= 0:
+        return 0.0
+    return min(100.0, round((disease_sum / total) * 1000) / 10)
+
+
+def _build_user_message(
+    scores: dict[str, float], top: dict[str, Any], severity_pct: float | None = None
+) -> str:
     bar_key = top["bar_key"]
     pct = top["pct"]
+    symptom_pct = _resolve_severity_pct(scores, bar_key, severity_pct)
     facts = DISEASE_FACTS.get(bar_key, DISEASE_FACTS["healthy"])
-    severity = _severity_label(bar_key, pct)
+    severity = _severity_label(bar_key, symptom_pct)
 
     payload = {
         "scores_percent": scores,
@@ -164,6 +181,7 @@ def _build_user_message(scores: dict[str, float], top: dict[str, Any]) -> str:
             "bar_key": bar_key,
             "disease_name": DISPLAY_NAMES.get(bar_key, bar_key),
             "confidence_percent": pct,
+            "symptom_severity_percent": symptom_pct,
             "severity_band": severity,
             "second_place": {
                 "bar_key": top["second_bar_key"],
@@ -174,8 +192,9 @@ def _build_user_message(scores: dict[str, float], top: dict[str, Any]) -> str:
         "trusted_facts": facts,
         "rules": [
             "Use trusted_facts as the source of truth; do not invent new chemicals, doses, or products.",
+            "confidence_percent is AI certainty about the disease name; severity_band comes from symptom_severity_percent (visible extent).",
             "If margin_over_second is under 15 and top is not healthy, mention uncertainty and suggest rescanning.",
-            "If confidence_percent is 100 and top is not healthy, set isCriticalRemoval true and prioritize immediate leaf removal.",
+            "If symptom_severity_percent is 100 and top is not healthy, set isCriticalRemoval true and prioritize immediate leaf removal.",
             "Keep actionSteps ordered and practical for a smallholder tomato farm.",
         ],
     }
@@ -205,7 +224,7 @@ def _extract_json_object(text: str) -> dict[str, Any]:
     return json.loads(cleaned)
 
 
-def _normalize_guide(data: dict[str, Any], bar_key: str, pct: float) -> dict[str, Any]:
+def _normalize_guide(data: dict[str, Any], bar_key: str, symptom_pct: float) -> dict[str, Any]:
     facts = DISEASE_FACTS.get(bar_key, DISEASE_FACTS["healthy"])
     disease_name = str(data.get("diseaseName") or DISPLAY_NAMES.get(bar_key, bar_key)).strip()
 
@@ -222,7 +241,7 @@ def _normalize_guide(data: dict[str, Any], bar_key: str, pct: float) -> dict[str
         prevention = [str(s).strip() for s in prevention if str(s).strip()]
 
     is_critical = bool(data.get("isCriticalRemoval"))
-    if bar_key != "healthy" and pct >= 100:
+    if bar_key != "healthy" and symptom_pct >= 100:
         is_critical = True
 
     return {
@@ -237,18 +256,18 @@ def _normalize_guide(data: dict[str, Any], bar_key: str, pct: float) -> dict[str
     }
 
 
-def _fallback_guide(bar_key: str, pct: float) -> dict[str, Any]:
+def _fallback_guide(bar_key: str, _confidence_pct: float, symptom_pct: float) -> dict[str, Any]:
     facts = DISEASE_FACTS.get(bar_key, DISEASE_FACTS["healthy"])
     is_healthy = bar_key == "healthy"
-    severity = _severity_label(bar_key, pct)
+    severity = _severity_label(bar_key, symptom_pct)
     action_steps = list(facts["action_steps"])
-    is_critical = not is_healthy and pct >= 100
+    is_critical = not is_healthy and symptom_pct >= 100
 
     if is_healthy:
         urgency = "Keep up regular monitoring to catch problems early."
     elif is_critical:
         urgency = (
-            "Critical (100%): remove this leaf immediately and destroy it away from the farm. "
+            "Critical (severity 100%): remove this leaf immediately and destroy it away from the farm. "
             "Do not compost."
         )
         action_steps = [
@@ -256,11 +275,11 @@ def _fallback_guide(bar_key: str, pct: float) -> dict[str, Any]:
             *action_steps,
         ]
     elif severity == "Severe":
-        urgency = f"Urgent ({_format_pct(pct)}%): start treatment within 24–48 hours."
+        urgency = f"Urgent (severity {_format_pct(symptom_pct)}%): start treatment within 24–48 hours."
     elif severity == "Moderate":
-        urgency = f"Moderate ({_format_pct(pct)}%): treat this week before it spreads."
+        urgency = f"Moderate (severity {_format_pct(symptom_pct)}%): treat this week before it spreads."
     else:
-        urgency = f"Mild ({_format_pct(pct)}%): monitor closely and treat if symptoms worsen."
+        urgency = f"Mild (severity {_format_pct(symptom_pct)}%): monitor closely and treat if symptoms worsen."
 
     return {
         "diseaseName": DISPLAY_NAMES.get(bar_key, bar_key),
@@ -273,7 +292,9 @@ def _fallback_guide(bar_key: str, pct: float) -> dict[str, Any]:
     }
 
 
-def fetch_care_recommendation(scores_raw: dict[str, Any] | None) -> dict[str, Any]:
+def fetch_care_recommendation(
+    scores_raw: dict[str, Any] | None, severity_pct: float | None = None
+) -> dict[str, Any]:
     """
     Returns { ok, guide?, error?, detail?, top? }.
     On Groq failure, ok may still be true with guide from rules fallback.
@@ -285,13 +306,14 @@ def fetch_care_recommendation(scores_raw: dict[str, Any] | None) -> dict[str, An
 
     bar_key = top["bar_key"]
     pct = top["pct"]
+    symptom_pct = _resolve_severity_pct(scores, bar_key, severity_pct)
 
     if not groq_is_configured():
         return {
             "ok": True,
-            "top": {"barKey": bar_key, "pct": pct},
+            "top": {"barKey": bar_key, "pct": pct, "severityPct": symptom_pct},
             "scores": scores,
-            "guide": _fallback_guide(bar_key, pct),
+            "guide": _fallback_guide(bar_key, pct, symptom_pct),
             "groq_used": False,
             "message": "GROQ_API_KEY not set; returned rule-based guide.",
         }
@@ -305,7 +327,7 @@ def fetch_care_recommendation(scores_raw: dict[str, Any] | None) -> dict[str, An
         "max_tokens": 900,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": _build_user_message(scores, top)},
+            {"role": "user", "content": _build_user_message(scores, top, symptom_pct)},
         ],
     }
 
@@ -320,10 +342,10 @@ def fetch_care_recommendation(scores_raw: dict[str, Any] | None) -> dict[str, An
             timeout=45,
         )
     except requests.RequestException as exc:
-        guide = _fallback_guide(bar_key, pct)
+        guide = _fallback_guide(bar_key, pct, symptom_pct)
         return {
             "ok": True,
-            "top": {"barKey": bar_key, "pct": pct},
+            "top": {"barKey": bar_key, "pct": pct, "severityPct": symptom_pct},
             "scores": scores,
             "guide": guide,
             "groq_used": False,
@@ -341,10 +363,10 @@ def fetch_care_recommendation(scores_raw: dict[str, Any] | None) -> dict[str, An
                 detail = str(err)
         except ValueError:
             pass
-        guide = _fallback_guide(bar_key, pct)
+        guide = _fallback_guide(bar_key, pct, symptom_pct)
         return {
             "ok": True,
-            "top": {"barKey": bar_key, "pct": pct},
+            "top": {"barKey": bar_key, "pct": pct, "severityPct": symptom_pct},
             "scores": scores,
             "guide": guide,
             "groq_used": False,
@@ -357,12 +379,12 @@ def fetch_care_recommendation(scores_raw: dict[str, Any] | None) -> dict[str, An
         payload = response.json()
         content = payload["choices"][0]["message"]["content"]
         parsed = _extract_json_object(content)
-        guide = _normalize_guide(parsed, bar_key, pct)
+        guide = _normalize_guide(parsed, bar_key, symptom_pct)
     except (KeyError, IndexError, json.JSONDecodeError, TypeError) as exc:
-        guide = _fallback_guide(bar_key, pct)
+        guide = _fallback_guide(bar_key, pct, symptom_pct)
         return {
             "ok": True,
-            "top": {"barKey": bar_key, "pct": pct},
+            "top": {"barKey": bar_key, "pct": pct, "severityPct": symptom_pct},
             "scores": scores,
             "guide": guide,
             "groq_used": False,
@@ -372,7 +394,7 @@ def fetch_care_recommendation(scores_raw: dict[str, Any] | None) -> dict[str, An
 
     return {
         "ok": True,
-        "top": {"barKey": bar_key, "pct": pct},
+        "top": {"barKey": bar_key, "pct": pct, "severityPct": symptom_pct},
         "scores": scores,
         "guide": guide,
         "groq_used": True,

@@ -31,7 +31,11 @@
     if (mode === "history") {
       return { className: "badge badge--watch", label: "Issue" };
     }
-    if (summary.pct >= 50) {
+    /* Alert = Severe symptom extent (67–100%); Watch = Mild/Moderate. */
+    const severityPct = Number.isFinite(Number(summary.severityPct))
+      ? Number(summary.severityPct)
+      : summary.pct;
+    if (severityPct >= 67) {
       return { className: "badge badge--alert", label: "Alert" };
     }
     return { className: "badge badge--watch", label: "Watch" };
@@ -39,7 +43,10 @@
 
   function statusBucket(summary) {
     if (!summary || summary.barKey === "healthy") return "healthy";
-    if (summary.pct >= 50) return "alert";
+    const severityPct = Number.isFinite(Number(summary.severityPct))
+      ? Number(summary.severityPct)
+      : summary.pct;
+    if (severityPct >= 67) return "alert";
     return "watch";
   }
 
@@ -138,6 +145,7 @@
         scores: info.scores || {},
         topBarKey: info.topBarKey ?? null,
         topPct: info.topPct ?? 0,
+        severityPct: Math.min(100, Math.max(0, Number(info.severityPct) || 0)),
       };
     }
     return map;
@@ -434,16 +442,31 @@
       });
     }
 
-    function renderTreatmentPanel(top, tileNum, scores) {
+    function setScanHighlight(scores, severityPct) {
+      if (!detailRoot) return;
+      window.TomatoInsightRecommendations?.renderScanHighlight?.(
+        detailRoot.querySelector(".scan-highlight"),
+        scores,
+        severityPct
+      );
+    }
+
+    function renderTreatmentPanel(top, tileNum, scores, severityPct) {
       if (!treatmentPanel || !top) return;
       const recs = window.TomatoInsightRecommendations;
       const stored = recs?.storedForTile?.(tileNum);
       const key = scores ? recs?.scoresKeyFor?.(scores) : "";
       const storedMatches = stored && (!stored.scoresKey || !key || stored.scoresKey === key);
       let guides = storedMatches ? recs?.guidesFromStored?.(stored, scores) : null;
-      if (!guides?.length) guides = scores ? recs?.guidesForScores?.(scores) : null;
+      if (!guides?.length) guides = scores ? recs?.guidesForScores?.(scores, severityPct) : null;
       if (!guides?.length && recs?.treatmentForBarKey) {
-        guides = [{ ...recs.treatmentForBarKey(top.barKey, top.pct), barKey: top.barKey, pct: top.pct }];
+        guides = [
+          {
+            ...recs.treatmentForBarKey(top.barKey, top.pct, severityPct),
+            barKey: top.barKey,
+            pct: top.pct,
+          },
+        ];
       }
       const html = recs?.renderGuidesHtml?.(guides);
       if (!html) {
@@ -454,7 +477,7 @@
       treatmentPanel.innerHTML = html;
     }
 
-    function syncTreatmentButton(top, tileNum, scores) {
+    function syncTreatmentButton(top, tileNum, scores, severityPct) {
       activeDetailTop = top;
       if (!treatmentBtn) return;
       if (!top) {
@@ -469,14 +492,12 @@
       treatmentBtn.hidden = false;
       treatmentBtn.disabled = false;
       treatmentBtn.setAttribute("aria-expanded", "false");
-      const detected = scores
-        ? window.TomatoInsightRecommendations?.findDetectedMatches?.(scores) || [top]
-        : [top];
-      const isCritical = detected.some((item) => item.pct >= 100 && item.barKey !== "healthy");
+      const highlight = window.TomatoInsightRecommendations?.highlightForScores?.(scores, severityPct);
+      const isCritical = Boolean(top.barKey !== "healthy" && Number(highlight?.severityPct) >= 100);
       treatmentBtn.textContent = isCritical
         ? "Urgent: remove leaf — view steps"
         : "View care recommendations";
-      renderTreatmentPanel(top, tileNum, scores);
+      renderTreatmentPanel(top, tileNum, scores, severityPct);
       if (treatmentPanel) treatmentPanel.hidden = true;
     }
 
@@ -529,11 +550,12 @@
       }
 
       setClassificationScores(info.scores || {});
+      setScanHighlight(info.scores || {}, info.severityPct);
       const top =
         summary && summary.pct > 0
           ? { barKey: summary.barKey, pct: summary.pct }
           : window.TilePlantStorage?.findTopScore?.(info.scores);
-      syncTreatmentButton(top, tileNum, info.scores || {});
+      syncTreatmentButton(top, tileNum, info.scores || {}, info.severityPct);
 
       detailRoot.hidden = false;
       document.body.classList.add("modal-open");

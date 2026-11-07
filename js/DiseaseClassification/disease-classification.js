@@ -42,51 +42,126 @@
     return n > 1 ? n / 100 : n;
   }
 
+  function barKeyForName(name) {
+    const key = normalizeKey(name);
+    if (!key) return "";
+    for (const { barKey, names } of DISEASE_LABELS) {
+      if (names.some((label) => key === normalizeKey(label) || key.includes(normalizeKey(label)))) {
+        return barKey;
+      }
+    }
+    return "";
+  }
+
+  function boxArea(box) {
+    if (!box || typeof box !== "object") return 0;
+    const x1 = Number(box.x1 ?? box.xmin ?? box.left ?? box[0]);
+    const y1 = Number(box.y1 ?? box.ymin ?? box.top ?? box[1]);
+    const x2 = Number(box.x2 ?? box.xmax ?? box.right ?? box[2]);
+    const y2 = Number(box.y2 ?? box.ymax ?? box.bottom ?? box[3]);
+    if (![x1, y1, x2, y2].every(Number.isFinite)) return 0;
+    return Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+  }
+
+  function collectResultItems(payload) {
+    const items = [];
+    if (!payload || typeof payload !== "object") return items;
+    if (Array.isArray(payload.images)) {
+      payload.images.forEach((image) => {
+        const shape = Array.isArray(image?.shape) ? image.shape : null;
+        const height = Number(shape?.[0]) || 0;
+        const width = Number(shape?.[1]) || 0;
+        const frameArea = height > 0 && width > 0 ? height * width : 0;
+        const rows = Array.isArray(image?.results) ? image.results : [];
+        rows.forEach((item) => items.push({ item, frameArea }));
+      });
+    }
+    if (Array.isArray(payload.results)) {
+      payload.results.forEach((item) => items.push({ item, frameArea: 0 }));
+    }
+    if (Array.isArray(payload.predictions)) {
+      payload.predictions.forEach((item) => items.push({ item, frameArea: 0 }));
+    }
+    return items;
+  }
+
   function extractPredictions(payload) {
     const results = [];
     const seen = new Set();
 
-    function append(name, confidence) {
-      const cleaned = String(name || "").trim();
+    collectResultItems(payload).forEach(({ item }) => {
+      const cleaned = String(item?.name || item?.class_name || item?.class || item?.label || "").trim();
       if (!cleaned) return;
       const key = normalizeKey(cleaned);
       if (seen.has(key)) return;
       seen.add(key);
-      results.push({ name: cleaned, confidence: normalizeConfidence(confidence) });
-    }
-
-    if (!payload || typeof payload !== "object") return results;
-
-    const images = payload.images;
-    if (Array.isArray(images)) {
-      images.forEach((image) => {
-        const items = image?.results;
-        if (!Array.isArray(items)) return;
-        items.forEach((item) => {
-          append(
-            item?.name || item?.class_name || item?.label,
-            item?.confidence ?? item?.score ?? 0
-          );
-        });
+      results.push({
+        name: cleaned,
+        confidence: normalizeConfidence(item?.confidence ?? item?.score ?? 0),
       });
-    }
-
-    if (Array.isArray(payload.results)) {
-      payload.results.forEach((item) => {
-        append(item?.name || item?.class_name || item?.label, item?.confidence ?? item?.score ?? 0);
-      });
-    }
-
-    if (Array.isArray(payload.predictions)) {
-      payload.predictions.forEach((item) => {
-        append(
-          item?.name || item?.class_name || item?.class || item?.label,
-          item?.confidence ?? item?.score ?? 0
-        );
-      });
-    }
+    });
 
     return results.sort((a, b) => b.confidence - a.confidence);
+  }
+
+  /**
+   * Symptom severity % = how much of the leaf/image shows disease (extent),
+   * not how sure the model is about the class name (confidence).
+   * Prefers detection box coverage; falls back to disease vs healthy score share.
+   */
+  function computeSymptomSeverityPct(payload, scores) {
+    let diseaseArea = 0;
+    let imageArea = 0;
+    let usedNormalizedBoxes = false;
+
+    const images = Array.isArray(payload?.images) ? payload.images : [];
+    images.forEach((image) => {
+      const shape = Array.isArray(image?.shape) ? image.shape : null;
+      const height = Number(shape?.[0]) || 0;
+      const width = Number(shape?.[1]) || 0;
+      const frameArea = height > 0 && width > 0 ? height * width : 0;
+      const rows = Array.isArray(image?.results) ? image.results : [];
+      let frameDisease = 0;
+      rows.forEach((item) => {
+        const barKey = barKeyForName(item?.name || item?.class_name || item?.class || item?.label);
+        if (!barKey || barKey === "healthy") return;
+        const area = boxArea(item?.box || item?.bbox || item?.bounding_box);
+        if (!(area > 0)) return;
+        if (frameArea > 0) {
+          frameDisease += area;
+          return;
+        }
+        if (area <= 1.0001) {
+          frameDisease += area;
+          usedNormalizedBoxes = true;
+        }
+      });
+      if (!(frameDisease > 0)) return;
+      diseaseArea += frameDisease;
+      imageArea += frameArea > 0 ? frameArea : 1;
+    });
+
+    if (imageArea > 0 && diseaseArea > 0) {
+      const pct = (diseaseArea / imageArea) * 100;
+      return {
+        severityPct: Math.min(100, Math.round(pct * 10) / 10),
+        severitySource: usedNormalizedBoxes ? "box_coverage_norm" : "box_coverage",
+      };
+    }
+
+    const healthy = Math.min(100, Math.max(0, Number(scores?.healthy) || 0));
+    const diseaseSum = ["tlcv", "early_blight", "spotted_wilt"].reduce(
+      (sum, key) => sum + Math.min(100, Math.max(0, Number(scores?.[key]) || 0)),
+      0
+    );
+    const total = healthy + diseaseSum;
+    if (total <= 0) {
+      return { severityPct: 0, severitySource: "none" };
+    }
+    return {
+      severityPct: Math.min(100, Math.round((diseaseSum / total) * 1000) / 10),
+      severitySource: "disease_share",
+    };
   }
 
   function mapToBarScores(predictions) {
@@ -261,10 +336,11 @@
 
       if (!stillCurrent()) return { ok: false, cancelled: true };
 
-      console.log("[TomatoInsight] Bar scores:", scores);
-      window.TomatoInsightScan?.setClassificationScores?.(scores);
+      const severity = computeSymptomSeverityPct(result, scores);
+      console.log("[TomatoInsight] Bar scores:", scores, "Severity:", severity);
+      window.TomatoInsightScan?.setClassificationScores?.(scores, severity);
       await new Promise((resolve) => setTimeout(resolve, 480));
-      return { ok: true, scores, predictions, raw: result };
+      return { ok: true, scores, predictions, ...severity, raw: result };
     } catch (err) {
       console.error("[TomatoInsight] Disease classification error:", err);
       const msg = String(err?.message || "");
@@ -284,5 +360,6 @@
     classifyImageFile,
     mapToBarScores,
     extractPredictions,
+    computeSymptomSeverityPct,
   };
 })();

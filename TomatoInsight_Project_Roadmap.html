@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TomatoInsight Project Roadmap</title>
+  <style>
+    :root {
+      --p1: #8ebce6;
+      --p2: #5b9bd5;
+      --p3: #3d7eb0;
+      --p4: #2b5f8f;
+      --p5: #1a3a5c;
+      --border: #a8c5e2;
+      --pill: #c5daf0;
+      --text: #1a3a5c;
+      --body: #2a4a6a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Calibri, "Segoe UI", Arial, sans-serif;
+      background: #fff;
+      color: var(--text);
+      padding: 36px 28px 48px;
+    }
+
+    .figure {
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    .figure-title {
+      text-align: center;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--p5);
+      margin-bottom: 28px;
+    }
+
+    .timeline {
+      position: relative;
+      padding-left: 0;
+    }
+
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 19px;
+      top: 12px;
+      bottom: 12px;
+      width: 3px;
+      background: linear-gradient(
+        180deg,
+        var(--p1) 0%,
+        var(--p2) 25%,
+        var(--p3) 50%,
+        var(--p4) 75%,
+        var(--p5) 100%
+      );
+      border-radius: 2px;
+    }
+
+    .phase {
+      position: relative;
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .phase:last-child { margin-bottom: 0; }
+
+    .node {
+      position: relative;
+      z-index: 1;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 0 4px #fff;
+      margin-top: 10px;
+    }
+
+    .phase:nth-child(1) .node { background: var(--p1); }
+    .phase:nth-child(2) .node { background: var(--p2); }
+    .phase:nth-child(3) .node { background: var(--p3); }
+    .phase:nth-child(4) .node { background: var(--p4); }
+    .phase:nth-child(5) .node { background: var(--p5); }
+
+    .card {
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .card-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 12px;
+      padding: 10px 14px;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.92rem;
+    }
+
+    .phase:nth-child(1) .card-head { background: var(--p1); }
+    .phase:nth-child(2) .card-head { background: var(--p2); }
+    .phase:nth-child(3) .card-head { background: var(--p3); }
+    .phase:nth-child(4) .card-head { background: var(--p4); }
+    .phase:nth-child(5) .card-head { background: var(--p5); }
+
+    .date {
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.22);
+      padding: 3px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .card-body {
+      padding: 12px 14px 14px;
+    }
+
+    ul {
+      list-style: none;
+      display: grid;
+      gap: 7px;
+    }
+
+    li {
+      position: relative;
+      padding-left: 14px;
+      font-size: 0.84rem;
+      line-height: 1.4;
+      color: var(--body);
+    }
+
+    li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: var(--p4);
+      font-weight: 700;
+    }
+
+    .caption {
+      margin-top: 22px;
+      font-size: 0.8rem;
+      color: var(--body);
+      text-align: left;
+      line-height: 1.45;
+    }
+
+    .caption strong {
+      color: var(--p5);
+    }
+
+    @media print {
+      body { padding: 12px; }
+      .card { break-inside: avoid; }
+      .node, .card-head, .date {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+  <figure class="figure">
+    <figcaption class="figure-title">TomatoInsight Project Roadmap</figcaption>
+
+    <div class="timeline">
+      <article class="phase">
+        <div class="node">1</div>
+        <div class="card">
+          <div class="card-head">
+            <span>Planning &amp; Research</span>
+            <span class="date">June – July 2025</span>
+          </div>
+          <div class="card-body">
+            <ul>
+              <li>Prepare data-gathering instruments and conduct data gathering.</li>
+              <li>Write the introduction, rationale, objectives, scope, and significance.</li>
+              <li>Review related literature and studies.</li>
+              <li>Finalize Chapters 1 and 2.</li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <article class="phase">
+        <div class="node">2</div>
+        <div class="card">
+          <div class="card-head">
+            <span>System Analysis &amp; Design</span>
+            <span class="date">July 2025</span>
+          </div>
+          <div class="card-body">
+            <ul>
+              <li>Define software engineering methodology and business model canvas.</li>
+              <li>Create program workflow and validation board.</li>
+              <li>Develop functional decomposition and use case diagrams.</li>
+              <li>Design mobile and web interfaces, database, and network architecture.</li>
+              <li>Finalize Chapter 3 design outputs.</li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <article class="phase">
+        <div class="node">3</div>
+        <div class="card">
+          <div class="card-head">
+            <span>AI Model &amp; Application Development</span>
+            <span class="date">July – October 2025</span>
+          </div>
+          <div class="card-body">
+            <ul>
+              <li>Set up project repository, development environment, and SDKs for mobile and web.</li>
+              <li>Configure Firebase services.</li>
+              <li>Collect, preprocess, and annotate tomato leaf images.</li>
+              <li>Train the YOLOv8n model.</li>
+              <li>Develop mobile modules for image scanning, disease assessment, monitoring, scan history, intervention, and notifications.</li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <article class="phase">
+        <div class="node">4</div>
+        <div class="card">
+          <div class="card-head">
+            <span>Web Development &amp; System Integration</span>
+            <span class="date">October – November 2025</span>
+          </div>
+          <div class="card-body">
+            <ul>
+              <li>Develop web authentication, scan upload, result display, and scan history.</li>
+              <li>Build plant monitoring records, dashboard, and profile.</li>
+              <li>Connect the web application to Firebase.</li>
+              <li>Integrate mobile modules and AI results.</li>
+              <li>Synchronize mobile and web applications through Firebase.</li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <article class="phase">
+        <div class="node">5</div>
+        <div class="card">
+          <div class="card-head">
+            <span>Testing, Deployment &amp; Evaluation</span>
+            <span class="date">November 2025</span>
+          </div>
+          <div class="card-body">
+            <ul>
+              <li>Conduct functional and integration testing across mobile and web.</li>
+              <li>Resolve system issues and prepare the integrated build.</li>
+              <li>Conduct pilot testing and validate the complete system.</li>
+              <li>Deploy the final TomatoInsight system (mobile and web).</li>
+              <li>Prepare technical documentation and user manual.</li>
+              <li>Present the system, gather feedback, and document improvements.</li>
+            </ul>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <p class="caption">
+      <strong>Figure.</strong> Project roadmap of the TomatoInsight system development,
+      covering planning, design, AI and mobile application development, web integration,
+      and evaluation. The mobile and web platforms are synchronized through Firebase.
+    </p>
+  </figure>
+</body>
+</html>

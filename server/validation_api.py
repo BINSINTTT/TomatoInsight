@@ -137,11 +137,17 @@ def recommend():
         return jsonify(
             {
                 "error": "invalid_body",
-                "message": 'Send JSON: { "scores": { "healthy": 0, "tlcv": 0, "early_blight": 0, "spotted_wilt": 0 } }',
+                "message": 'Send JSON: { "scores": { "healthy": 0, "tlcv": 0, "early_blight": 0, "spotted_wilt": 0 }, "severity_pct": 0 }',
             }
         ), 400
 
-    result = fetch_care_recommendation(scores)
+    severity_raw = body.get("severity_pct", body.get("severityPct"))
+    try:
+        severity_pct = float(severity_raw) if severity_raw is not None and severity_raw != "" else None
+    except (TypeError, ValueError):
+        severity_pct = None
+
+    result = fetch_care_recommendation(scores, severity_pct)
     if not result.get("ok"):
         return jsonify(result), 400
 

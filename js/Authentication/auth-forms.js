@@ -11,7 +11,16 @@
   }
 
   function isValidEmail(value) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
+    const email = String(value || "").trim();
+    // Only Gmail addresses are accepted for TomatoInsight accounts.
+    return /^[^\s@]+@gmail\.com$/i.test(email);
+  }
+
+  function emailValidationError(value) {
+    const email = String(value || "").trim();
+    if (!email) return "Enter your email address.";
+    if (!isValidEmail(email)) return "Email must end with @gmail.com.";
+    return "";
   }
 
   function getPasswordResetActionFromUrl() {
@@ -94,8 +103,9 @@
         showFormError(errorEl, "Enter your email and password.");
         return;
       }
-      if (!isValidEmail(email)) {
-        showFormError(errorEl, "Enter a valid email address.");
+      const emailError = emailValidationError(email);
+      if (emailError) {
+        showFormError(errorEl, emailError);
         form.email.setAttribute("aria-invalid", "true");
         return;
       }
@@ -310,12 +320,9 @@
 
       const email = form.email.value.trim();
 
-      if (!email) {
-        showFormError(errorEl, "Enter your email address.");
-        return;
-      }
-      if (!isValidEmail(email)) {
-        showFormError(errorEl, "Enter a valid email address.");
+      const forgotEmailError = emailValidationError(email);
+      if (forgotEmailError) {
+        showFormError(errorEl, forgotEmailError);
         form.email.setAttribute("aria-invalid", "true");
         return;
       }
@@ -327,7 +334,7 @@
         if (result.ok) {
           showFormSuccess(
             successEl,
-            "If an account exists for that email, we sent a link to reset your password. Check your inbox and spam folder."
+            "Password reset link sent. Check your inbox and spam folder."
           );
           form.email.value = "";
           return;
@@ -449,12 +456,9 @@
       }
       form.middleInitial.removeAttribute("aria-invalid");
 
-      if (!email) {
-        showFormError(errorEl, "Enter your email address.");
-        return;
-      }
-      if (!isValidEmail(email)) {
-        showFormError(errorEl, "Enter a valid email address.");
+      const signupEmailError = emailValidationError(email);
+      if (signupEmailError) {
+        showFormError(errorEl, signupEmailError);
         form.email.setAttribute("aria-invalid", "true");
         return;
       }

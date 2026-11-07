@@ -131,7 +131,7 @@
           .join("")}</ul>`
       : `<p class="farm-tile__notify-popup__empty">No notifications for this plant right now.</p>`;
     popup.innerHTML =
-      `<img class="farm-tile__notify-popup__logo" src="../img/LogoTomatoInsight.png" alt="" width="72" height="72" />` +
+      `<img class="farm-tile__notify-popup__logo" src="../img/LogoTomatoInsight.png" alt="" width="116" height="116" />` +
       (dateLabel ? `<p class="farm-tile__notify-popup__date">${dateLabel}</p>` : "") +
       `<p class="farm-tile__notify-popup__title">${title}</p>` +
       body +

@@ -395,6 +395,22 @@
           </div>
 
           <section class="scan-results" aria-labelledby="scan-results-heading">
+            <div class="scan-highlight" id="scan-highlight" aria-live="polite">
+              <p class="scan-highlight__label">Detected Disease</p>
+              <h4 class="scan-highlight__disease" data-scan-detected-disease>—</h4>
+              <div class="scan-highlight__metrics">
+                <div class="scan-highlight__metric">
+                  <p class="scan-highlight__metric-label">AI Confidence</p>
+                  <p class="scan-highlight__metric-value" data-scan-ai-confidence>—</p>
+                  <p class="scan-highlight__metric-hint">Certainty of the disease name</p>
+                </div>
+                <div class="scan-highlight__metric">
+                  <p class="scan-highlight__metric-label">Symptom Severity</p>
+                  <p class="scan-highlight__metric-value" data-scan-symptom-severity>—</p>
+                  <p class="scan-highlight__metric-hint">How extensive symptoms look</p>
+                </div>
+              </div>
+            </div>
             <h3 class="scan-results__heading" id="scan-results-heading">Classification</h3>
             <ul class="scan-results__list">
               <li class="scan-result-row">

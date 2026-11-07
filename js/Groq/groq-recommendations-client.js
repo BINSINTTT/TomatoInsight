@@ -15,19 +15,26 @@
 
   /**
    * @param {{ healthy?: number, tlcv?: number, early_blight?: number, spotted_wilt?: number }} scores
+   * @param {{ severityPct?: number }} [options]
    * @returns {Promise<{ ok: boolean, guide?: object, groqUsed?: boolean, error?: string, detail?: string }>}
    */
-  async function fetchCareRecommendation(scores) {
+  async function fetchCareRecommendation(scores, options) {
     const url = String(getConfig().recommendProxyUrl || "").trim();
     if (!url) {
       return { ok: false, error: "missing_url" };
+    }
+
+    const body = { scores };
+    const severityPct = Number(options?.severityPct);
+    if (Number.isFinite(severityPct) && severityPct >= 0) {
+      body.severity_pct = Math.min(100, severityPct);
     }
 
     try {
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scores }),
+        body: JSON.stringify(body),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {

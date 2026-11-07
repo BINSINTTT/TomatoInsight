@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TomatoInsight — Landing page user guide</title>
+    <link rel="icon" href="../img/LogoTomatoInsight.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="../css/user-guide.css" />
+  </head>
+  <body class="user-guide">
+    <div class="ug-page">
+      <header class="ug-header">
+        <p class="ug-header__eyebrow"><i class="bi bi-journal-text" aria-hidden="true"></i> User guide · Desktop</p>
+        <h1 class="ug-header__title">
+          <span class="ti-brand"><span class="ti-brand__tomato">Tomato</span><span class="ti-brand__insight">Insight</span></span>
+          landing page
+        </h1>
+        <p class="ug-header__sub">
+          Numbered boxes mark each control on the desktop landing page. The list below explains what opens
+          when you click it. Select any step text to copy.
+        </p>
+        <div class="ug-toolbar">
+          <button type="button" class="ug-toolbar__btn ug-toolbar__btn--primary" id="ug-copy-all">
+            <i class="bi bi-clipboard" aria-hidden="true"></i>
+            <span id="ug-copy-all-label">Copy all steps</span>
+          </button>
+          <a class="ug-toolbar__btn" href="landing.html">
+            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+            Open live landing page
+          </a>
+        </div>
+      </header>
+
+      <section class="ug-frames" aria-label="Annotated desktop landing page screens">
+        <!-- ========== DESKTOP PANEL 1 ========== -->
+        <article class="ug-desktop" data-panel="1">
+          <div class="ug-desktop__chrome" aria-hidden="true">
+            <div class="ug-desktop__dots"><span></span><span></span><span></span></div>
+            <div class="ug-desktop__url">tomatoinsight.app / landing</div>
+          </div>
+          <div class="ug-desktop__screen">
+            <div class="ug-annotate" data-ug-layer aria-hidden="true"></div>
+            <nav class="ug-nav" aria-label="Landing navigation">
+              <a class="ug-nav__logo" href="landing.html#home" tabindex="-1" data-ug-box="1" data-ug-shape="pill">
+                <img src="../img/LogoTomatoInsight.png" alt="" width="34" height="34" />
+                <span class="ug-nav__brand">
+                  <span class="ti-brand__tomato">Tomato</span><span class="ti-brand__insight">Insight</span>
+                </span>
+              </a>
+
+              <ul class="ug-nav__links">
+                <li><a href="landing.html#home" tabindex="-1">Home</a></li>
+                <li><a href="landing.html#how" tabindex="-1" data-ug-box="2">How it works</a></li>
+                <li><a href="landing.html#features" tabindex="-1" data-ug-box="3">Features</a></li>
+                <li><a href="landing.html#diseases" tabindex="-1">Diseases</a></li>
+              </ul>
+
+              <div class="ug-nav__actions">
+                <a class="ug-btn ug-btn--outline" href="login.html" tabindex="-1">Log in</a>
+                <a class="ug-btn ug-btn--primary" href="login.html?signup=1" tabindex="-1">
+                  Create account <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                </a>
+              </div>
+            </nav>
+
+            <div class="ug-hero">
+              <div class="ug-hero__copy">
+                <span class="ug-hero__eyebrow">
+                  <i class="bi bi-activity" aria-hidden="true"></i> Four leaf conditions scored per scan
+                </span>
+                <h2 class="ug-hero__title">Spot tomato leaf disease before it spreads.</h2>
+                <p class="ug-hero__lead">
+                  <span class="ti-brand__tomato">Tomato</span><span class="ti-brand__insight">Insight</span>
+                  maps your farm tile by tile, checks that every photo really is a tomato leaf, then scores
+                  healthy plus three diseases, and tells you what to do next.
+                </p>
+                <div class="ug-hero__ctas">
+                  <a class="ug-btn ug-btn--primary" href="login.html?signup=1" tabindex="-1">
+                    Create account <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                  </a>
+                  <a class="ug-btn ug-btn--outline" href="login.html" tabindex="-1">
+                    <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Log in
+                  </a>
+                </div>
+                <div class="ug-hero__chips">
+                  <span class="ug-chip"><i class="bi bi-camera" aria-hidden="true"></i> Works from a phone photo</span>
+                  <span class="ug-chip"><i class="bi bi-hdd-network" aria-hidden="true"></i> No extra hardware</span>
+                </div>
+              </div>
+              <div class="ug-hero__media" aria-hidden="true">
+                <div class="ug-flash">
+                  <figure class="ug-flash__card ug-flash__card--back">
+                    <img src="../img/Card01.jpg" alt="" />
+                  </figure>
+                  <figure class="ug-flash__card ug-flash__card--front">
+                    <img src="../img/Card00.jpg" alt="" />
+                  </figure>
+                  <span class="ug-flash__btn ug-flash__btn--prev"><i class="bi bi-chevron-left"></i></span>
+                  <span class="ug-flash__btn ug-flash__btn--next"><i class="bi bi-chevron-right"></i></span>
+                  <div class="ug-flash__dots">
+                    <span class="is-active"></span><span></span><span></span><span></span><span></span><span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- ========== DESKTOP PANEL 2 ========== -->
+        <article class="ug-desktop" data-panel="2">
+          <div class="ug-desktop__chrome" aria-hidden="true">
+            <div class="ug-desktop__dots"><span></span><span></span><span></span></div>
+            <div class="ug-desktop__url">tomatoinsight.app / landing</div>
+          </div>
+          <div class="ug-desktop__screen">
+            <div class="ug-annotate" data-ug-layer aria-hidden="true"></div>
+            <nav class="ug-nav" aria-label="Landing navigation">
+              <a class="ug-nav__logo" href="landing.html#home" tabindex="-1">
+                <img src="../img/LogoTomatoInsight.png" alt="" width="34" height="34" />
+                <span class="ug-nav__brand">
+                  <span class="ti-brand__tomato">Tomato</span><span class="ti-brand__insight">Insight</span>
+                </span>
+              </a>
+
+              <ul class="ug-nav__links">
+                <li><a href="landing.html#home" tabindex="-1">Home</a></li>
+                <li><a href="landing.html#how" tabindex="-1">How it works</a></li>
+                <li><a href="landing.html#features" tabindex="-1">Features</a></li>
+                <li><a href="landing.html#diseases" tabindex="-1" data-ug-box="4">Diseases</a></li>
+              </ul>
+
+              <div class="ug-nav__actions">
+                <a class="ug-btn ug-btn--outline" href="login.html" tabindex="-1" data-ug-box="5" data-ug-shape="pill">Log in</a>
+                <a class="ug-btn ug-btn--primary" href="login.html?signup=1" tabindex="-1" data-ug-box="6" data-ug-shape="pill">
+                  Create account <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                </a>
+              </div>
+            </nav>
+
+            <div class="ug-hero">
+              <div class="ug-hero__copy">
+                <span class="ug-hero__eyebrow">
+                  <i class="bi bi-activity" aria-hidden="true"></i> Four leaf conditions scored per scan
+                </span>
+                <h2 class="ug-hero__title">Spot tomato leaf disease before it spreads.</h2>
+                <p class="ug-hero__lead">
+                  <span class="ti-brand__tomato">Tomato</span><span class="ti-brand__insight">Insight</span>
+                  maps your farm tile by tile, checks that every photo really is a tomato leaf, then scores
+                  healthy plus three diseases, and tells you what to do next.
+                </p>
+                <div class="ug-hero__ctas">
+                  <a class="ug-btn ug-btn--primary" href="login.html?signup=1" tabindex="-1">
+                    Create account <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                  </a>
+                  <a class="ug-btn ug-btn--outline" href="login.html" tabindex="-1">
+                    <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Log in
+                  </a>
+                </div>
+                <div class="ug-hero__chips">
+                  <span class="ug-chip"><i class="bi bi-camera" aria-hidden="true"></i> Works from a phone photo</span>
+                  <span class="ug-chip"><i class="bi bi-hdd-network" aria-hidden="true"></i> No extra hardware</span>
+                </div>
+              </div>
+              <div class="ug-hero__media" aria-hidden="true">
+                <div class="ug-flash">
+                  <figure class="ug-flash__card ug-flash__card--back">
+                    <img src="../img/Card02.jpg" alt="" />
+                  </figure>
+                  <figure class="ug-flash__card ug-flash__card--front">
+                    <img src="../img/Card01.jpg" alt="" />
+                  </figure>
+                  <span class="ug-flash__btn ug-flash__btn--prev"><i class="bi bi-chevron-left"></i></span>
+                  <span class="ug-flash__btn ug-flash__btn--next"><i class="bi bi-chevron-right"></i></span>
+                  <div class="ug-flash__dots">
+                    <span></span><span class="is-active"></span><span></span><span></span><span></span><span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- ========== DESKTOP PANEL 3 ========== -->
+        <article class="ug-desktop" data-panel="3">
+          <div class="ug-desktop__chrome" aria-hidden="true">
+            <div class="ug-desktop__dots"><span></span><span></span><span></span></div>
+            <div class="ug-desktop__url">tomatoinsight.app / landing</div>
+          </div>
+          <div class="ug-desktop__screen">
+            <div class="ug-annotate" data-ug-layer aria-hidden="true"></div>
+            <nav class="ug-nav" aria-label="Landing navigation">
+              <a class="ug-nav__logo" href="landing.html#home" tabindex="-1">
+                <img src="../img/LogoTomatoInsight.png" alt="" width="34" height="34" />
+                <span class="ug-nav__brand">
+                  <span class="ti-brand__tomato">Tomato</span><span class="ti-brand__insight">Insight</span>
+                </span>
+              </a>
+
+              <ul class="ug-nav__links">
+                <li><a href="landing.html#home" tabindex="-1">Home</a></li>
+                <li><a href="landing.html#how" tabindex="-1">How it works</a></li>
+                <li><a href="landing.html#features" tabindex="-1">Features</a></li>
+                <li><a href="landing.html#diseases" tabindex="-1">Diseases</a></li>
+              </ul>
+
+              <div class="ug-nav__actions">
+                <a class="ug-btn ug-btn--outline" href="login.html" tabindex="-1">Log in</a>
+                <a class="ug-btn ug-btn--primary" href="login.html?signup=1" tabindex="-1">
+                  Create account <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                </a>
+              </div>
+            </nav>
+
+            <div class="ug-hero">
+              <div class="ug-hero__copy">
+                <span class="ug-hero__eyebrow">
+                  <i class="bi bi-activity" aria-hidden="true"></i> Four leaf conditions scored per scan
+                </span>
+                <h2 class="ug-hero__title">Spot tomato leaf disease before it spreads.</h2>
+                <p class="ug-hero__lead">
+                  <span class="ti-brand__tomato">Tomato</span><span class="ti-brand__insight">Insight</span>
+                  maps your farm tile by tile, checks that every photo really is a tomato leaf, then scores
+                  healthy plus three diseases, and tells you what to do next.
+                </p>
+                <div class="ug-hero__ctas">
+                  <a
+                    class="ug-btn ug-btn--primary"
+                    href="login.html?signup=1"
+                    tabindex="-1"
+                    data-ug-box="7"
+                    data-ug-shape="pill"
+                  >
+                    Create account <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                  </a>
+                  <a
+                    class="ug-btn ug-btn--outline"
+                    href="login.html"
+                    tabindex="-1"
+                    data-ug-box="8"
+                    data-ug-shape="pill"
+                  >
+                    <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Log in
+                  </a>
+                </div>
+                <div class="ug-hero__chips">
+                  <span class="ug-chip"><i class="bi bi-camera" aria-hidden="true"></i> Works from a phone photo</span>
+                  <span class="ug-chip"><i class="bi bi-hdd-network" aria-hidden="true"></i> No extra hardware</span>
+                </div>
+              </div>
+              <div class="ug-hero__media">
+                <div class="ug-flash" data-ug-box="9" data-ug-pad="8">
+                  <figure class="ug-flash__card ug-flash__card--back">
+                    <img src="../img/Card03.jpg" alt="" />
+                  </figure>
+                  <figure class="ug-flash__card ug-flash__card--front">
+                    <img src="../img/Card02.jpg" alt="" />
+                  </figure>
+                  <span class="ug-flash__btn ug-flash__btn--prev" aria-hidden="true"><i class="bi bi-chevron-left"></i></span>
+                  <span class="ug-flash__btn ug-flash__btn--next" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+                  <div class="ug-flash__dots" aria-hidden="true">
+                    <span></span><span></span><span class="is-active"></span><span></span><span></span><span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="ug-steps" aria-labelledby="ug-steps-title">
+        <div class="ug-steps__head">
+          <h2 class="ug-steps__title" id="ug-steps-title">How each control works</h2>
+          <p class="ug-steps__hint">Selectable text — highlight any line or use Copy all steps.</p>
+        </div>
+
+        <ol class="ug-steps__list" id="ug-steps-list">
+          <li class="ug-steps__item" data-step="1">
+            <span class="ug-steps__badge" aria-hidden="true">1</span>
+            <p class="ug-steps__text">
+              Click the <strong>TomatoInsight</strong> logo to return to the top of the landing page (Home).
+              <span class="ug-steps__opens">Opens: Home / top of landing page</span>
+            </p>
+          </li>
+          <li class="ug-steps__item" data-step="2">
+            <span class="ug-steps__badge" aria-hidden="true">2</span>
+            <p class="ug-steps__text">
+              Click <strong>How it works</strong> to scroll to the three-step process: map farm, scan leaf, treat and track.
+              <span class="ug-steps__opens">Opens: How it works section (#how)</span>
+            </p>
+          </li>
+          <li class="ug-steps__item" data-step="3">
+            <span class="ug-steps__badge" aria-hidden="true">3</span>
+            <p class="ug-steps__text">
+              Click <strong>Features</strong> to scroll to farm blueprint, guarded scans, classification, care tips, and history.
+              <span class="ug-steps__opens">Opens: Features section (#features)</span>
+            </p>
+          </li>
+          <li class="ug-steps__item" data-step="4">
+            <span class="ug-steps__badge" aria-hidden="true">4</span>
+            <p class="ug-steps__text">
+              Click <strong>Diseases</strong> to scroll to Healthy, Yellow leaf curl, Early blight, and Spotted wilt cards.
+              <span class="ug-steps__opens">Opens: Diseases section (#diseases)</span>
+            </p>
+          </li>
+          <li class="ug-steps__item" data-step="5">
+            <span class="ug-steps__badge" aria-hidden="true">5</span>
+            <p class="ug-steps__text">
+              Click <strong>Log in</strong> in the top bar if you already have an account.
+              <span class="ug-steps__opens">Opens: Sign-in page (login.html)</span>
+            </p>
+          </li>
+          <li class="ug-steps__item" data-step="6">
+            <span class="ug-steps__badge" aria-hidden="true">6</span>
+            <p class="ug-steps__text">
+              Click <strong>Create account</strong> in the top bar to register a new account.
+              <span class="ug-steps__opens">Opens: Sign-up panel on the login page</span>
+            </p>
+          </li>
+          <li class="ug-steps__item" data-step="7">
+            <span class="ug-steps__badge" aria-hidden="true">7</span>
+            <p class="ug-steps__text">
+              Click the hero <strong>Create account</strong> button to start registration from the main call to action.
+              <span class="ug-steps__opens">Opens: Sign-up panel on the login page</span>
+            </p>
+          </li>
+          <li class="ug-steps__item" data-step="8">
+            <span class="ug-steps__badge" aria-hidden="true">8</span>
+            <p class="ug-steps__text">
+              Click the hero <strong>Log in</strong> button to sign in from the main call to action.
+              <span class="ug-steps__opens">Opens: Sign-in page (login.html)</span>
+            </p>
+          </li>
+          <li class="ug-steps__item" data-step="9">
+            <span class="ug-steps__badge" aria-hidden="true">9</span>
+            <p class="ug-steps__text">
+              Use the leaf sample carousel arrows or dots to browse example tomato leaf photos.
+              <span class="ug-steps__opens">Shows: sample leaf images on the landing page</span>
+            </p>
+          </li>
+        </ol>
+      </section>
+
+      <p class="ug-footer-note">
+        Live site:
+        <a href="landing.html">landing.html</a>
+        ·
+        <a href="login.html">login.html</a>
+      </p>
+    </div>
+
+    <script>
+      (function () {
+        var PAD_DEFAULT = 5;
+
+        function paintBoxes() {
+          document.querySelectorAll(".ug-desktop__screen").forEach(function (screen) {
+            var layer = screen.querySelector("[data-ug-layer]");
+            if (!layer) return;
+            layer.innerHTML = "";
+
+            var screenRect = screen.getBoundingClientRect();
+            screen.querySelectorAll("[data-ug-box]").forEach(function (target) {
+              var num = target.getAttribute("data-ug-box");
+              if (!num) return;
+
+              var shape = target.getAttribute("data-ug-shape") || "rect";
+              var padAttr = target.getAttribute("data-ug-pad");
+              var pad = padAttr == null || padAttr === "" ? PAD_DEFAULT : Number(padAttr);
+              if (!Number.isFinite(pad) || pad < 0) pad = PAD_DEFAULT;
+
+              var r = target.getBoundingClientRect();
+              var box = document.createElement("div");
+              box.className = "ug-box" + (shape === "pill" ? " ug-box--pill" : "");
+              // border-box: width/height are the outer edge of the red stroke
+              box.style.boxSizing = "border-box";
+              box.style.left = (r.left - screenRect.left - pad).toFixed(1) + "px";
+              box.style.top = (r.top - screenRect.top - pad).toFixed(1) + "px";
+              box.style.width = (r.width + pad * 2).toFixed(1) + "px";
+              box.style.height = (r.height + pad * 2).toFixed(1) + "px";
+
+              var badge = document.createElement("span");
+              badge.className = "ug-box__num";
+              badge.textContent = num;
+              box.appendChild(badge);
+              layer.appendChild(box);
+            });
+          });
+        }
+
+        var raf = 0;
+        function schedulePaint() {
+          cancelAnimationFrame(raf);
+          raf = requestAnimationFrame(paintBoxes);
+        }
+
+        window.addEventListener("load", schedulePaint);
+        window.addEventListener("resize", schedulePaint);
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready.then(schedulePaint);
+        }
+        schedulePaint();
+        setTimeout(schedulePaint, 120);
+        setTimeout(schedulePaint, 400);
+
+        var btn = document.getElementById("ug-copy-all");
+        var label = document.getElementById("ug-copy-all-label");
+        var list = document.getElementById("ug-steps-list");
+        if (!btn || !list) return;
+
+        function stepsPlainText() {
+          return Array.prototype.map
+            .call(list.querySelectorAll(".ug-steps__item"), function (item, i) {
+              var text = item.querySelector(".ug-steps__text");
+              var raw = text ? text.innerText.replace(/\s+\n/g, "\n").trim() : "";
+              return i + 1 + ". " + raw;
+            })
+            .join("\n\n");
+        }
+
+        btn.addEventListener("click", function () {
+          var payload = stepsPlainText();
+          function done() {
+            btn.classList.add("is-copied");
+            if (label) label.textContent = "Copied!";
+            setTimeout(function () {
+              btn.classList.remove("is-copied");
+              if (label) label.textContent = "Copy all steps";
+            }, 1600);
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(payload).then(done).catch(function () {
+              window.prompt("Copy these steps:", payload);
+            });
+          } else {
+            window.prompt("Copy these steps:", payload);
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

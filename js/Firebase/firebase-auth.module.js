@@ -10,6 +10,7 @@ import {
   browserSessionPersistence,
   signOut as firebaseSignOut,
   sendPasswordResetEmail as firebaseSendPasswordResetEmail,
+  fetchSignInMethodsForEmail,
   verifyPasswordResetCode as firebaseVerifyPasswordResetCode,
   confirmPasswordReset as firebaseConfirmPasswordReset,
   updateProfile,
@@ -17,6 +18,14 @@ import {
 import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-analytics.js";
 
 const firebaseConfig = window.TOMATO_INSIGHT_FIREBASE_CONFIG;
+
+function isAllowedGmail(email) {
+  return /^[^\s@]+@gmail\.com$/i.test(String(email || "").trim());
+}
+
+function gmailOnlyError() {
+  return "Email must end with @gmail.com.";
+}
 
 function authErrorMessage(error) {
   const code = error?.code || "";
@@ -26,7 +35,7 @@ function authErrorMessage(error) {
     "auth/weak-password": "Password is too weak. Follow the requirements below.",
     "auth/password-does-not-meet-requirements":
       "Password must be at least 8 characters and include uppercase, lowercase, and a special character.",
-    "auth/user-not-found": "No account found for this email.",
+    "auth/user-not-found": "This email is not registered.",
     "auth/wrong-password": "Incorrect password.",
     "auth/invalid-credential": "Invalid email or password.",
     "auth/too-many-requests": "Too many attempts. Wait a moment and try again.",
@@ -78,8 +87,10 @@ window.TomatoInsightAuth = {
 
   async signInWithEmail({ email, password }) {
     if (!auth) return { ok: false, error: "Firebase is not configured." };
+    const trimmed = String(email || "").trim();
+    if (!isAllowedGmail(trimmed)) return { ok: false, error: gmailOnlyError() };
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      await signInWithEmailAndPassword(auth, trimmed, password);
       return { ok: true };
     } catch (err) {
       console.error("[TomatoInsight] signIn", err);
@@ -92,7 +103,12 @@ window.TomatoInsightAuth = {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const signedEmail = result?.user?.email || "";
+      if (!isAllowedGmail(signedEmail)) {
+        await firebaseSignOut(auth);
+        return { ok: false, error: gmailOnlyError() };
+      }
       return { ok: true };
     } catch (err) {
       console.error("[TomatoInsight] signInWithGoogle", err);
@@ -103,9 +119,19 @@ window.TomatoInsightAuth = {
   async signUpWithEmail(payload) {
     if (!auth) return { ok: false, error: "Firebase is not configured." };
     const { email, password, displayName, firstName, middleInitial, lastName, farmName } = payload;
+    const trimmedEmail = String(email || "").trim();
+    if (!isAllowedGmail(trimmedEmail)) return { ok: false, error: gmailOnlyError() };
     try {
-      const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const credential = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
       if (credential.user) {
+        // Drop any previous account's shared farm cache before this uid writes profile/farm data.
+        // (Farm keys are not uid-scoped; without this, a second signup could inherit the first farm.)
+        try {
+          const { clearLocalUserFarmData } = await import("./user-data-sync.module.js");
+          clearLocalUserFarmData({ keepActiveUid: true });
+        } catch (err) {
+          console.warn("[TomatoInsight] Could not reset local farm cache after sign-up:", err);
+        }
         try {
           const key = "tomatoInsight.userProfiles";
           const map = JSON.parse(localStorage.getItem(key) || "{}");
@@ -114,7 +140,7 @@ window.TomatoInsightAuth = {
             middleInitial: (middleInitial || "").toString().trim().toUpperCase().slice(0, 1),
             lastName: lastName || "",
             farmName: farmName || "",
-            email: email.trim(),
+            email: trimmedEmail,
             updatedAt: Date.now(),
           };
           localStorage.setItem(key, JSON.stringify(map));
@@ -139,7 +165,7 @@ window.TomatoInsightAuth = {
               middleInitial: middleInitial || "",
               lastName: lastName || "",
               farmName: farmName || "",
-              email: email.trim(),
+              email: trimmedEmail,
             },
             { updateAuthDisplayName: false }
           );
@@ -185,7 +211,12 @@ window.TomatoInsightAuth = {
     if (!auth) return { ok: false, error: "Firebase is not configured." };
     const trimmed = String(email || "").trim();
     if (!trimmed) return { ok: false, error: "Enter your email address." };
+    if (!isAllowedGmail(trimmed)) return { ok: false, error: gmailOnlyError() };
     try {
+      const methods = await fetchSignInMethodsForEmail(auth, trimmed);
+      if (!methods.length) {
+        return { ok: false, error: "This email is not registered." };
+      }
       const resetPageUrl = new URL("reset-password.html", window.location.href).href;
       const actionCodeSettings = {
         url: resetPageUrl,
@@ -208,6 +239,9 @@ window.TomatoInsightAuth = {
       return { ok: true };
     } catch (err) {
       console.error("[TomatoInsight] sendPasswordResetEmail", err);
+      if (err?.code === "auth/user-not-found") {
+        return { ok: false, error: "This email is not registered." };
+      }
       return { ok: false, error: authErrorMessage(err) };
     }
   },

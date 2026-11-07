@@ -36,6 +36,7 @@
       scores: info.scores || {},
       topBarKey: info.topBarKey ?? null,
       topPct: info.topPct ?? 0,
+      severityPct: Math.min(100, Math.max(0, Number(info.severityPct) || 0)),
       imageDataUrl: info.imageDataUrl || null,
     };
   }
@@ -160,12 +161,15 @@
   function diseaseSummaryForInfo(info) {
     if (!info) return null;
 
+    const severityPct = Math.min(100, Math.max(0, Number(info.severityPct) || 0));
+
     if (info.topBarKey && Number(info.topPct) > 0) {
       const barKey = String(info.topBarKey);
       return {
         barKey,
         label: BAR_LABELS[barKey] || barKey,
         pct: roundPct(info.topPct),
+        severityPct,
       };
     }
 
@@ -175,6 +179,7 @@
       barKey: top.barKey,
       label: BAR_LABELS[top.barKey] || top.barKey,
       pct: roundPct(top.pct),
+      severityPct,
     };
   }
 

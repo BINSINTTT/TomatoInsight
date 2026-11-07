@@ -157,8 +157,82 @@
   padding: 1rem;
   border-radius: 1rem;
   background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(34, 34, 34, 0.06);
+  box-shadow: 0 1px 3px rgba(34, 34, 34, 0.04);
+}
+
+.scan-highlight {
+  margin: 0 0 1rem;
+  padding: 0 0 1rem;
+  border-bottom: 1px solid rgba(34, 34, 34, 0.08);
+}
+
+.scan-highlight__label {
+  margin: 0 0 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.scan-highlight__disease {
+  margin: 0 0 0.9rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #2c2c2c;
+  letter-spacing: -0.01em;
+}
+
+.scan-highlight__metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.scan-highlight__metric {
+  padding: 0.85rem 0.9rem;
+  border-radius: 1rem;
+  background: #f3f1ec;
+  border: 1px solid rgba(155, 43, 38, 0.08);
+}
+
+.scan-highlight__metric-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.scan-highlight__metric-value {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #2c2c2c;
+  font-variant-numeric: tabular-nums;
+}
+
+.scan-highlight__metric-hint {
+  margin: 0.3rem 0 0;
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+
+.scan-highlight__metric-value--healthy {
+  color: #2e7d32;
+}
+
+.scan-highlight__metric-value--mild {
+  color: #c77800;
+}
+
+.scan-highlight__metric-value--moderate {
+  color: #d84315;
+}
+
+.scan-highlight__metric-value--severe {
+  color: var(--tomato-shell, #9b2b26);
 }
 
 .scan-results__heading {

@@ -40,6 +40,8 @@ const LOCAL = {
   farmWeek: "tomatoInsight.selectedFarmWeek",
   deletions: "tomatoInsight.tileDeletions",
   scanCalendar: "tomatoInsight.scanCalendar",
+  /** Which Firebase uid currently owns the shared farm keys above (not profiles). */
+  ownerUid: "tomatoInsight.dataOwnerUid",
 };
 
 const FARM_WEEK_FIRST = 4;
@@ -170,14 +172,75 @@ function writeJson(key, value) {
   window.TomatoInsightStorageSnapshot?.schedule?.();
 }
 
-export function clearLocalUserFarmData() {
-  activeUid = null;
+function readDataOwnerUid() {
+  try {
+    return String(localStorage.getItem(LOCAL.ownerUid) || "").trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function setDataOwnerUid(uid) {
+  try {
+    if (uid) localStorage.setItem(LOCAL.ownerUid, String(uid));
+    else localStorage.removeItem(LOCAL.ownerUid);
+  } catch {
+    /* ignore */
+  }
+}
+
+function hasLocalFarmPayload() {
+  const farm = captureLocalFarm();
+  if (layoutValid(farm.layout)) return true;
+  if (Object.keys(farm.plantNames || {}).length) return true;
+  if (Object.keys(farm.tiles || {}).length) return true;
+  if (readLocalDeletions().length) return true;
+  const recommendations = readJson(LOCAL.recommendations, null);
+  if (recommendations && typeof recommendations === "object" && Object.keys(recommendations).length) {
+    return true;
+  }
+  if (readScanCalendar()) return true;
+  return false;
+}
+
+/** True only when this browser farm cache is safe to upload for uid. */
+function localFarmBelongsToUid(uid) {
+  if (!uid) return false;
+  const owner = readDataOwnerUid();
+  if (owner === uid) return true;
+  if (owner && owner !== uid) return false;
+  // Legacy untagged cache: refuse if another account's profile is already on this device.
+  const profiles = readJson(LOCAL.profiles, {});
+  const otherUids = Object.keys(profiles || {}).filter((id) => id && id !== uid);
+  return otherUids.length === 0;
+}
+
+/**
+ * Farm layout/tiles live in shared localStorage keys. Drop them when another
+ * account is about to use this browser so User B never inherits User A's farm.
+ */
+export function discardForeignLocalFarmData(uid) {
+  if (!uid) return false;
+  const owner = readDataOwnerUid();
+  if (owner && owner !== uid) {
+    clearLocalUserFarmData({ keepActiveUid: true });
+    return true;
+  }
+  return false;
+}
+
+export function clearLocalUserFarmData(options = {}) {
+  const { keepActiveUid = false } = options;
+  if (!keepActiveUid) activeUid = null;
   localStorage.removeItem(LOCAL.layout);
   localStorage.removeItem(LOCAL.tiles);
   localStorage.removeItem(LOCAL.plantNames);
+  localStorage.removeItem(LOCAL.recommendations);
   localStorage.removeItem(LOCAL.farmWeek);
   localStorage.removeItem(LOCAL.deletions);
   localStorage.removeItem(LOCAL.scanCalendar);
+  setDataOwnerUid(null);
+  lastCloudJson = "";
 }
 
 function writeLocalProfile(uid, profile) {
@@ -659,7 +722,7 @@ function mergeTileRecords(localTiles, remoteTiles, deletions) {
   return merged;
 }
 
-function applyFarmToLocal(farm, deletions) {
+function applyFarmToLocal(farm, deletions, uid) {
   const localTiles = readJson(LOCAL.tiles, {});
   const mergedTiles = mergeTileRecords(localTiles, farm.tiles, deletions);
 
@@ -683,6 +746,7 @@ function applyFarmToLocal(farm, deletions) {
   }
 
   localStorage.setItem(LOCAL.farmWeek, String(farm.selectedFarmWeek ?? FARM_WEEK_FIRST));
+  if (uid) setDataOwnerUid(uid);
 }
 
 function applyDeletionsToLocal(deletions) {
@@ -697,11 +761,12 @@ function applyCloudBundle(uid, bundle, { notify } = {}) {
   if (signature === lastCloudJson) return false;
   lastCloudJson = signature;
   if (bundle.user) writeLocalProfile(uid, { ...profile, email: coalesceStr(bundle.user.email, profile.email) });
-  applyFarmToLocal(farm, deletions);
+  applyFarmToLocal(farm, deletions, uid);
   applyDeletionsToLocal(deletions);
   if (bundle.user?.scanCalendar && typeof bundle.user.scanCalendar === "object") {
     writeJson(LOCAL.scanCalendar, bundle.user.scanCalendar);
   }
+  setDataOwnerUid(uid);
   if (notify) {
     dispatchUserDataReady(activeUid, window.__tomatoInsightAccountName || "", {
       live: true,
@@ -883,6 +948,9 @@ export async function hydrateUserFromRtdb(uid, email) {
   }
 
   activeUid = uid;
+  // Never keep or upload another account's farm cache for this uid.
+  discardForeignLocalFarmData(uid);
+
   const remote = await readCloudBundle(uid);
   const hadLocalLayout = layoutValid(captureLocalFarm().layout);
 
@@ -901,6 +969,7 @@ export async function hydrateUserFromRtdb(uid, email) {
     } catch (err) {
       logCloudFailure("syncPlantNames", err);
     }
+    setDataOwnerUid(uid);
     return {
       ok: true,
       source: "remote",
@@ -910,22 +979,29 @@ export async function hydrateUserFromRtdb(uid, email) {
 
   const localFarm = captureLocalFarm();
   const localProfile = readLocalProfile(uid) || {};
-  const hasLocal =
-    localFarm.layout ||
-    Object.keys(localFarm.plantNames || {}).length ||
-    Object.keys(localFarm.tiles || {}).length ||
-    readLocalDeletions().length ||
-    localProfile.firstName ||
-    localProfile.farmName;
+  const hasLocalFarm =
+    localFarmBelongsToUid(uid) &&
+    (layoutValid(localFarm.layout) ||
+      Object.keys(localFarm.plantNames || {}).length > 0 ||
+      Object.keys(localFarm.tiles || {}).length > 0 ||
+      readLocalDeletions().length > 0);
+  const hasLocalProfile = Boolean(localProfile.firstName || localProfile.farmName || localProfile.lastName);
 
-  if (hasLocal) {
+  // Only migrate browser farm data that belongs to this uid. Same display name must not
+  // cause User B to inherit User A's layout/tiles from shared localStorage keys.
+  if (hasLocalFarm) {
     const uploaded = await uploadLocalBundle(uid, email);
     const changed = applyCloudBundle(uid, uploaded);
+    setDataOwnerUid(uid);
     return { ok: true, source: "migrated-local", changed: Boolean(changed) };
   }
 
+  if (hasLocalFarmPayload() && !localFarmBelongsToUid(uid)) {
+    clearLocalUserFarmData({ keepActiveUid: true });
+  }
+
   await bootstrapUserInRtdb(uid, email, localProfile);
-  clearLocalUserFarmData();
+  clearLocalUserFarmData({ keepActiveUid: true });
   activeUid = uid;
   const cached = readLocalProfile(uid) || localProfile;
   writeLocalProfile(uid, {
@@ -938,7 +1014,8 @@ export async function hydrateUserFromRtdb(uid, email) {
   });
   localStorage.setItem(LOCAL.farmWeek, String(FARM_WEEK_FIRST));
   applyDeletionsToLocal([]);
-  return { ok: true, source: "initialized-empty" };
+  setDataOwnerUid(uid);
+  return { ok: true, source: "initialized-empty", profileOnly: hasLocalProfile };
 }
 
 export function getActiveUid() {
@@ -1134,9 +1211,16 @@ function registerGlobalBridge() {
     flushFarmToCloud() {
       const uid = resolveSyncUid();
       if (!uid) return Promise.resolve();
+      if (!localFarmBelongsToUid(uid)) {
+        discardForeignLocalFarmData(uid);
+        return Promise.resolve();
+      }
       return flushLocalFarmToRtdb(uid).catch((err) => {
         logCloudFailure("flushFarm", err);
       });
+    },
+    discardForeignFarmData(uid) {
+      return discardForeignLocalFarmData(uid || resolveSyncUid());
     },
     whenReady() {
       // Wait for the first auth event so we don't resolve the module's initial empty promise
@@ -1186,8 +1270,10 @@ function runBlockingHydrate(uid, email, displayName) {
 }
 
 function runBackgroundHydrate(uid, email, displayName) {
-  const hasLocalLayout = layoutValid(captureLocalFarm().layout);
+  discardForeignLocalFarmData(uid);
+  const hasLocalLayout = localFarmBelongsToUid(uid) && layoutValid(captureLocalFarm().layout);
   // If local layout is missing, pull cloud first so we never flush an empty blueprint over Firebase.
+  // Never flush another account's leftover cache into this uid's cloud doc.
   const prepare = hasLocalLayout
     ? flushLocalFarmToRtdb(uid).catch((err) => {
         logCloudFailure("flush-before-hydrate", err);
@@ -1226,12 +1312,18 @@ export function bindUserDataSync(auth) {
       window.__tomatoInsightAccountName = user.displayName || "";
       const uid = user.uid;
       const displayName = user.displayName || "";
+
+      // Account switch / new signup while previous farm cache is still present.
+      discardForeignLocalFarmData(uid);
       activeUid = uid;
 
+      const owner = readDataOwnerUid();
       const localLayoutReady =
-        hasLocalUserBundle(uid) && layoutValid(captureLocalFarm().layout);
+        owner === uid &&
+        hasLocalUserBundle(uid) &&
+        layoutValid(captureLocalFarm().layout);
 
-      // Fast path only when the farm blueprint is already in localStorage.
+      // Fast path only when THIS uid already owns the farm blueprint in localStorage.
       // Cached profile alone used to skip blocking hydrate, so the dashboard stayed empty
       // while a background flush could overwrite the cloud layout with null.
       if (localLayoutReady) {

@@ -21,15 +21,19 @@
       return { mood: "happy", src: happyEmoji, alt: "Healthy" };
     }
 
-    if (pct >= 100) {
-      return { mood: "sad", src: sadEmoji, alt: "Severe disease match" };
+    /* Mood follows symptom severity (extent), not AI confidence. */
+    const severityPct = Number.isFinite(Number(summary.severityPct))
+      ? Math.min(100, Math.max(0, Number(summary.severityPct)))
+      : pct;
+    if (severityPct >= 67) {
+      return { mood: "sad", src: sadEmoji, alt: "Severe symptoms" };
     }
 
-    if (pct >= 50) {
-      return { mood: "worry", src: worryEmoji, alt: "Moderate disease match" };
+    if (severityPct >= 34) {
+      return { mood: "worry", src: worryEmoji, alt: "Moderate symptoms" };
     }
 
-    return { mood: "worry", src: worryEmoji, alt: "Mild disease match" };
+    return { mood: "worry", src: worryEmoji, alt: "Mild symptoms" };
   }
 
   window.TomatoInsightTileEmoji = {
