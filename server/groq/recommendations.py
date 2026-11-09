@@ -143,7 +143,7 @@ def _find_top(scores: dict[str, float]) -> dict[str, Any] | None:
 
 
 def _severity_label(bar_key: str, symptom_pct: float | None, severity_label: str | None = None) -> str:
-    """Use explicit OpenCV severity label when provided; never invent from AI confidence."""
+    """Use explicit severity label when provided; never invent from AI confidence."""
     if severity_label:
         return str(severity_label)
     if bar_key == "healthy":
@@ -163,7 +163,7 @@ def _resolve_severity_pct(
     bar_key: str, severity_pct: float | None, severity_label: str | None = None
 ) -> float | None:
     """
-    Only accept an explicit symptom extent from OpenCV assessment.
+    Only accept an explicit symptom extent from the severity API.
     Do not fall back to classification confidence / score share.
     """
     if bar_key == "healthy":
@@ -207,7 +207,7 @@ def _build_user_message(
         "rules": [
             "Use trusted_facts as the source of truth; do not invent new chemicals, doses, or products.",
             "confidence_percent is AI certainty about the disease name only; never treat it as severity.",
-            "severity_band comes from separate OpenCV symptom assessment (or Unable to Assess).",
+            "severity_band comes from separate severity assessment (or Unable to Assess).",
             "If margin_over_second is under 15 and top is not healthy, mention uncertainty and suggest rescanning.",
             "If symptom_severity_percent is 100 and top is not healthy, set isCriticalRemoval true and prioritize immediate leaf removal.",
             "If severity_band is Unable to Assess, give cautious general guidance without inventing an extent percentage.",
@@ -333,7 +333,7 @@ def fetch_care_recommendation(
     """
     Returns { ok, guide?, error?, detail?, top? }.
     On Groq failure, ok may still be true with guide from rules fallback.
-    Severity must come from OpenCV assessment (severity_pct / severity_label), never from confidence.
+    Severity must come from the severity API (severity_pct / severity_label), never from confidence.
     """
     scores = _normalize_scores(scores_raw)
     top = _find_top(scores)

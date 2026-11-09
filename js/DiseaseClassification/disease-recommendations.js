@@ -82,7 +82,7 @@
   }
 
   /**
-   * Severity from OpenCV assessment only. Never from AI confidence / score share.
+   * Severity from the severity API only. Never from AI confidence / score share.
    * Provisional bands Mild 1–33 / Moderate 34–66 / Severe 67–100 when a measurable % exists.
    */
   function diseaseSeverityLabel(diseaseName, symptomScorePercent, explicitLabel) {

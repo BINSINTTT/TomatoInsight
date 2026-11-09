@@ -95,7 +95,7 @@
   }
 
   /**
-   * Separate OpenCV symptom assessment. Never uses AI confidence.
+   * Separate symptom severity from YOLO confidence (never uses confidence %).
    */
   async function assessSymptomSeverity(file, diseaseKey) {
     const unable = {
@@ -103,7 +103,7 @@
       severityLabel: "Unable to Assess",
       affectedAreaPct: null,
       severityAssessable: false,
-      severitySource: "opencv_unavailable",
+      severitySource: "severity_unavailable",
       severityReason: "request_failed",
     };
 
@@ -137,7 +137,7 @@
         severityLabel: label,
         affectedAreaPct: areaPct,
         severityAssessable: measurable && label !== "Unable to Assess",
-        severitySource: "opencv",
+        severitySource: "severity_api",
         severityReason: String(payload.reason || ""),
       };
     } catch (err) {
