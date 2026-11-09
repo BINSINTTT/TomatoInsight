@@ -33,8 +33,6 @@
     return null;
   }
 
-  const REMEMBER_KEY = "tomatoInsight.authRemember";
-
   function loginRedirectTarget() {
     const params = new URLSearchParams(window.location.search);
     const next = params.get("next");
@@ -50,26 +48,15 @@
   }
 
   function readRememberPreference() {
-    try {
-      const stored = localStorage.getItem(REMEMBER_KEY);
-      if (stored === "0") return false;
-      if (stored === "1") return true;
-    } catch {
-      /* ignore */
-    }
-    return true;
+    return window.TomatoInsightAuthSession?.readRememberPreference?.() ?? true;
   }
 
   function writeRememberPreference(remember) {
-    try {
-      localStorage.setItem(REMEMBER_KEY, remember ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
+    window.TomatoInsightAuthSession?.writeRememberPreference?.(remember);
   }
 
-  async function finishSuccessfulLogin() {
-    window.TomatoInsightAuthSession?.markSignedIn?.();
+  async function finishSuccessfulLogin(remember) {
+    window.TomatoInsightAuthSession?.markSignedIn?.(remember);
     window.location.href = loginRedirectTarget();
   }
 
@@ -114,12 +101,14 @@
       submitBtn.disabled = true;
       if (googleBtn) googleBtn.disabled = true;
       try {
-        if (window.TomatoInsightAuth?.setRememberSession) {
-          await window.TomatoInsightAuth.setRememberSession(remember);
+        const persist = await window.TomatoInsightAuth?.setRememberSession?.(remember);
+        if (persist && persist.ok === false) {
+          showFormError(errorEl, persist.error || "Could not apply Remember me. Try again.");
+          return;
         }
         const result = await window.TomatoInsightAuth.signInWithEmail({ email, password });
         if (result.ok) {
-          await finishSuccessfulLogin();
+          await finishSuccessfulLogin(remember);
           return;
         }
         showFormError(errorEl, result.error || "Sign in failed.");
@@ -141,12 +130,14 @@
           showFormError(errorEl, "Google sign-in is not available yet.");
           return;
         }
-        if (window.TomatoInsightAuth?.setRememberSession) {
-          await window.TomatoInsightAuth.setRememberSession(remember);
+        const persist = await window.TomatoInsightAuth?.setRememberSession?.(remember);
+        if (persist && persist.ok === false) {
+          showFormError(errorEl, persist.error || "Could not apply Remember me. Try again.");
+          return;
         }
         const result = await window.TomatoInsightAuth.signInWithGoogle();
         if (result.ok) {
-          await finishSuccessfulLogin();
+          await finishSuccessfulLogin(remember);
           return;
         }
         showFormError(errorEl, result.error || "Google sign-in failed.");

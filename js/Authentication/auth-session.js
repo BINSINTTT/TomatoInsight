@@ -1,11 +1,48 @@
 (function () {
-  const KEY = "tomatoInsight.authSession";
+  const SESSION_KEY = "tomatoInsight.authSession";
+  const REMEMBER_KEY = "tomatoInsight.authRemember";
+
+  function readRememberPreference() {
+    try {
+      const stored = localStorage.getItem(REMEMBER_KEY);
+      if (stored === "0") return false;
+      if (stored === "1") return true;
+    } catch {
+      /* ignore */
+    }
+    return true;
+  }
+
+  function writeRememberPreference(remember) {
+    try {
+      localStorage.setItem(REMEMBER_KEY, remember ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }
 
   function readSignedIn() {
     try {
-      return sessionStorage.getItem(KEY) === "1";
+      if (sessionStorage.getItem(SESSION_KEY) === "1") return true;
+      // Remember me keeps a durable flag so protected pages paint after a browser restart
+      // while Firebase restores the LOCAL auth session.
+      if (readRememberPreference() && localStorage.getItem(SESSION_KEY) === "1") return true;
     } catch {
-      return false;
+      /* ignore */
+    }
+    return false;
+  }
+
+  function clearSessionFlags() {
+    try {
+      sessionStorage.removeItem(SESSION_KEY);
+    } catch {
+      /* ignore */
+    }
+    try {
+      localStorage.removeItem(SESSION_KEY);
+    } catch {
+      /* ignore */
     }
   }
 
@@ -29,19 +66,28 @@
   }
 
   window.TomatoInsightAuthSession = {
-    markSignedIn() {
+    REMEMBER_KEY,
+    SESSION_KEY,
+    readRememberPreference,
+    writeRememberPreference,
+    markSignedIn(rememberOverride) {
+      const remember =
+        typeof rememberOverride === "boolean" ? rememberOverride : readRememberPreference();
+      writeRememberPreference(remember);
       try {
-        sessionStorage.setItem(KEY, "1");
+        sessionStorage.setItem(SESSION_KEY, "1");
+      } catch {
+        /* ignore */
+      }
+      try {
+        if (remember) localStorage.setItem(SESSION_KEY, "1");
+        else localStorage.removeItem(SESSION_KEY);
       } catch {
         /* ignore */
       }
     },
     markSignedOut() {
-      try {
-        sessionStorage.removeItem(KEY);
-      } catch {
-        /* ignore */
-      }
+      clearSessionFlags();
     },
     isSignedInCached() {
       return readSignedIn();

@@ -21,15 +21,17 @@
       return { mood: "happy", src: happyEmoji, alt: "Healthy" };
     }
 
-    /* Mood follows symptom severity (extent), not AI confidence. */
-    const severityPct = Number.isFinite(Number(summary.severityPct))
-      ? Math.min(100, Math.max(0, Number(summary.severityPct)))
-      : pct;
-    if (severityPct >= 67) {
+    /* Mood follows OpenCV symptom severity only — never AI confidence. */
+    const label = String(summary.severityLabel || "").toLowerCase();
+    if (label === "unable to assess" || !Number.isFinite(Number(summary.severityPct))) {
+      return { mood: "worry", src: worryEmoji, alt: "Severity unable to assess" };
+    }
+    const severityPct = Math.min(100, Math.max(0, Number(summary.severityPct)));
+    if (severityPct >= 67 || label === "severe") {
       return { mood: "sad", src: sadEmoji, alt: "Severe symptoms" };
     }
 
-    if (severityPct >= 34) {
+    if (severityPct >= 34 || label === "moderate") {
       return { mood: "worry", src: worryEmoji, alt: "Moderate symptoms" };
     }
 

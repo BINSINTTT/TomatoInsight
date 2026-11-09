@@ -24,8 +24,9 @@
   let tileDrawerCloseTimer = null;
   let activeTileNum = null;
   let activeTileImageDataUrl = null;
-  /** Symptom extent % (separate from AI confidence / bar scores). */
+  /** Symptom extent from OpenCV assessment (separate from AI confidence). */
   let activeSeverityPct = null;
+  let activeSeverityMeta = null;
   let pendingScanTile = null;
   /** Tile number while validation + classification is still running for an upload. */
   let scanInFlightTile = null;
@@ -319,10 +320,27 @@
       : "";
     const savedAt =
       (customEnabled && calendar.savedAtForScan?.()) || new Date().toISOString();
+    const highlight = window.TomatoInsightRecommendations?.highlightForScores?.(
+      scores,
+      activeSeverityMeta ?? activeSeverityPct
+    );
     const severityPct =
-      activeSeverityPct == null
-        ? window.TomatoInsightRecommendations?.highlightForScores?.(scores)?.severityPct ?? 0
-        : activeSeverityPct;
+      activeSeverityMeta?.severityPct != null && Number.isFinite(Number(activeSeverityMeta.severityPct))
+        ? Number(activeSeverityMeta.severityPct)
+        : activeSeverityPct != null && Number.isFinite(Number(activeSeverityPct))
+          ? Number(activeSeverityPct)
+          : highlight?.severityPct != null && Number.isFinite(Number(highlight.severityPct))
+            ? Number(highlight.severityPct)
+            : null;
+    const severityLabel =
+      activeSeverityMeta?.severityLabel || highlight?.severity || "Unable to Assess";
+    const affectedAreaPct =
+      activeSeverityMeta?.affectedAreaPct != null &&
+      Number.isFinite(Number(activeSeverityMeta.affectedAreaPct))
+        ? Number(activeSeverityMeta.affectedAreaPct)
+        : highlight?.affectedAreaPct != null && Number.isFinite(Number(highlight.affectedAreaPct))
+          ? Number(highlight.affectedAreaPct)
+          : null;
     return {
       savedAt,
       scanDayIso,
@@ -332,7 +350,13 @@
       scores,
       topBarKey: top?.barKey ?? null,
       topPct: top?.pct ?? 0,
-      severityPct: Math.min(100, Math.max(0, Number(severityPct) || 0)),
+      severityPct: severityPct == null ? null : Math.min(100, Math.max(0, severityPct)),
+      severityLabel,
+      affectedAreaPct:
+        affectedAreaPct == null ? null : Math.min(100, Math.max(0, affectedAreaPct)),
+      severityAssessable: Boolean(
+        activeSeverityMeta?.severityAssessable ?? highlight?.severityAssessable
+      ),
     };
   }
 
@@ -386,6 +410,9 @@
     if (info.scores) {
       setClassificationScores(info.scores, "stored", {
         severityPct: info.severityPct,
+        severityLabel: info.severityLabel,
+        affectedAreaPct: info.affectedAreaPct,
+        severityAssessable: info.severityAssessable,
       });
     }
 
@@ -567,6 +594,12 @@
           : prev.severityPct != null
             ? prev.severityPct
             : null,
+      severityMeta:
+        patch.severityMeta !== undefined
+          ? patch.severityMeta
+          : prev.severityMeta != null
+            ? prev.severityMeta
+            : null,
     };
     if (!next.imageDataUrl && !draftHasScores(next.scores)) {
       tileDrafts.delete(key);
@@ -596,6 +629,7 @@
       imageDataUrl,
       scores: getCurrentClassificationScores(),
       severityPct: activeSeverityPct,
+      severityMeta: activeSeverityMeta,
     });
   }
 
@@ -613,9 +647,11 @@
       zone?.classList.add("scan-upload--has-image");
     }
     if (draft.scores) {
-      setClassificationScores(draft.scores, "stored", {
-        severityPct: draft.severityPct,
-      });
+      setClassificationScores(
+        draft.scores,
+        "stored",
+        draft.severityMeta || { severityPct: draft.severityPct }
+      );
       markScanCreditDue(tileNum, draft.scores);
     }
     syncSaveInfoButton();
@@ -669,17 +705,50 @@
 
     if (source === "reset") {
       activeSeverityPct = null;
-    } else if (severityMeta && Number.isFinite(Number(severityMeta.severityPct))) {
-      activeSeverityPct = Math.min(100, Math.max(0, Number(severityMeta.severityPct)));
+      activeSeverityMeta = null;
+    } else if (severityMeta && typeof severityMeta === "object") {
+      activeSeverityMeta = {
+        severityPct:
+          severityMeta.severityPct != null && Number.isFinite(Number(severityMeta.severityPct))
+            ? Math.min(100, Math.max(0, Number(severityMeta.severityPct)))
+            : null,
+        severityLabel: severityMeta.severityLabel || null,
+        affectedAreaPct:
+          severityMeta.affectedAreaPct != null &&
+          Number.isFinite(Number(severityMeta.affectedAreaPct))
+            ? Math.min(100, Math.max(0, Number(severityMeta.affectedAreaPct)))
+            : null,
+        severityAssessable: Boolean(severityMeta.severityAssessable),
+        severityReason: severityMeta.severityReason || "",
+      };
+      activeSeverityPct = activeSeverityMeta.severityPct;
+    } else if (severityMeta != null && Number.isFinite(Number(severityMeta))) {
+      activeSeverityPct = Math.min(100, Math.max(0, Number(severityMeta)));
+      activeSeverityMeta = {
+        severityPct: activeSeverityPct,
+        severityLabel: null,
+        affectedAreaPct: activeSeverityPct,
+        severityAssessable: true,
+      };
     } else if (fromScan || source === "stored") {
-      activeSeverityPct =
-        window.TomatoInsightRecommendations?.highlightForScores?.(scores)?.severityPct ?? null;
+      // Never invent severity from confidence scores when assessment is missing.
+      activeSeverityPct = null;
+      activeSeverityMeta = {
+        severityPct: null,
+        severityLabel: "Unable to Assess",
+        affectedAreaPct: null,
+        severityAssessable: false,
+      };
     }
 
     if (updateDom) restoreClassificationRowOrder();
 
     if (fromScan && scanTile != null) {
-      rememberTileDraft(scanTile, { scores, severityPct: activeSeverityPct });
+      rememberTileDraft(scanTile, {
+        scores,
+        severityPct: activeSeverityPct,
+        severityMeta: activeSeverityMeta,
+      });
       if (totalScore > 0) markScanCreditDue(scanTile, scores);
     }
 
@@ -687,7 +756,7 @@
     window.TomatoInsightRecommendations?.renderScanHighlight?.(
       tileDrawer.querySelector(".scan-highlight"),
       scores,
-      activeSeverityPct
+      activeSeverityMeta ?? activeSeverityPct
     );
     const hasImage = document
       .getElementById("scan-upload-zone")
@@ -695,7 +764,7 @@
     window.TomatoInsightRecommendations?.onScoresUpdated?.(
       totalScore > 0 && hasImage ? scores : {},
       activeTileNum,
-      activeSeverityPct
+      activeSeverityMeta ?? activeSeverityPct
     );
   }
 
@@ -895,7 +964,11 @@
       persistActivePlantName();
       if (window.TomatoInsightRecommendations?.captureForSave) {
         try {
-          await window.TomatoInsightRecommendations.captureForSave(savedTile, savedScores);
+          await window.TomatoInsightRecommendations.captureForSave(
+            savedTile,
+            savedScores,
+            activeSeverityMeta ?? activeSeverityPct
+          );
         } catch (err) {
           console.error("[TomatoInsight] Could not store care recommendation:", err);
         }

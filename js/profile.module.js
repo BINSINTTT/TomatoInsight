@@ -396,7 +396,7 @@ function startProfileClock() {
 
 function goToLandingPage() {
   window.TomatoInsightAuthSession?.markSignedOut?.();
-  window.location.replace(new URL("landing.html", window.location.href).href);
+  window.location.replace(new URL("login.html", window.location.href).href);
 }
 
 function clearStoredFirebaseUser() {

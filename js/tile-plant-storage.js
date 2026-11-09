@@ -29,6 +29,14 @@
   function weekSnapshot(info) {
     const weekNumber = Number(info?.weekNumber);
     if (!Number.isFinite(weekNumber)) return null;
+    const severityPct =
+      info.severityPct == null || info.severityPct === ""
+        ? null
+        : Math.min(100, Math.max(0, Number(info.severityPct)));
+    const affectedAreaPct =
+      info.affectedAreaPct == null || info.affectedAreaPct === ""
+        ? null
+        : Math.min(100, Math.max(0, Number(info.affectedAreaPct)));
     return {
       savedAt: info.savedAt || null,
       scanDayIso: typeof info.scanDayIso === "string" ? info.scanDayIso : "",
@@ -36,7 +44,10 @@
       scores: info.scores || {},
       topBarKey: info.topBarKey ?? null,
       topPct: info.topPct ?? 0,
-      severityPct: Math.min(100, Math.max(0, Number(info.severityPct) || 0)),
+      severityPct: Number.isFinite(severityPct) ? severityPct : null,
+      severityLabel: info.severityLabel != null ? String(info.severityLabel) : null,
+      affectedAreaPct: Number.isFinite(affectedAreaPct) ? affectedAreaPct : null,
+      severityAssessable: Boolean(info.severityAssessable),
       imageDataUrl: info.imageDataUrl || null,
     };
   }
@@ -161,7 +172,20 @@
   function diseaseSummaryForInfo(info) {
     if (!info) return null;
 
-    const severityPct = Math.min(100, Math.max(0, Number(info.severityPct) || 0));
+    const severityPct =
+      info.severityPct == null || info.severityPct === ""
+        ? null
+        : Math.min(100, Math.max(0, Number(info.severityPct)));
+    const affectedAreaPct =
+      info.affectedAreaPct == null || info.affectedAreaPct === ""
+        ? null
+        : Math.min(100, Math.max(0, Number(info.affectedAreaPct)));
+    const severityExtra = {
+      severityPct: Number.isFinite(severityPct) ? severityPct : null,
+      severityLabel: info.severityLabel != null ? String(info.severityLabel) : null,
+      affectedAreaPct: Number.isFinite(affectedAreaPct) ? affectedAreaPct : null,
+      severityAssessable: Boolean(info.severityAssessable),
+    };
 
     if (info.topBarKey && Number(info.topPct) > 0) {
       const barKey = String(info.topBarKey);
@@ -169,7 +193,7 @@
         barKey,
         label: BAR_LABELS[barKey] || barKey,
         pct: roundPct(info.topPct),
-        severityPct,
+        ...severityExtra,
       };
     }
 
@@ -179,7 +203,7 @@
       barKey: top.barKey,
       label: BAR_LABELS[top.barKey] || top.barKey,
       pct: roundPct(top.pct),
-      severityPct,
+      ...severityExtra,
     };
   }
 

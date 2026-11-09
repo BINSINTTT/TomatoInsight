@@ -185,7 +185,7 @@
 
 .scan-highlight__metrics {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
   gap: 0.65rem;
 }
 
@@ -229,6 +229,10 @@
 
 .scan-highlight__metric-value--moderate {
   color: #d84315;
+}
+
+.scan-highlight__metric-value--unable {
+  color: #6b7280;
 }
 
 .scan-highlight__metric-value--severe {

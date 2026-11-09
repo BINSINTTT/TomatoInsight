@@ -73,16 +73,33 @@ function initFirebase() {
 
 const auth = initFirebase();
 
+function readRememberPreference() {
+  return window.TomatoInsightAuthSession?.readRememberPreference?.() ?? true;
+}
+
+/** Keep Firebase persistence aligned with the Remember me preference on every load. */
+async function applyRememberPersistence(remember = readRememberPreference()) {
+  if (!auth) return { ok: false, error: "Firebase is not configured." };
+  try {
+    await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
+    return { ok: true };
+  } catch (err) {
+    console.warn("[TomatoInsight] setPersistence", err);
+    return { ok: false, error: authErrorMessage(err) };
+  }
+}
+
+if (auth) {
+  applyRememberPersistence().catch((err) => {
+    console.warn("[TomatoInsight] Could not apply Remember me persistence on boot:", err);
+  });
+}
+
 window.TomatoInsightAuth = {
   async setRememberSession(remember) {
-    if (!auth) return { ok: false, error: "Firebase is not configured." };
-    try {
-      await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
-      return { ok: true };
-    } catch (err) {
-      console.warn("[TomatoInsight] setPersistence", err);
-      return { ok: false, error: authErrorMessage(err) };
-    }
+    const prefer = Boolean(remember);
+    window.TomatoInsightAuthSession?.writeRememberPreference?.(prefer);
+    return applyRememberPersistence(prefer);
   },
 
   async signInWithEmail({ email, password }) {

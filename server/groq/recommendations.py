@@ -142,38 +142,52 @@ def _find_top(scores: dict[str, float]) -> dict[str, Any] | None:
     }
 
 
-def _severity_label(bar_key: str, symptom_pct: float) -> str:
-    """Symptom extent bands (not AI confidence): Mild 1–33%, Moderate 34–66%, Severe 67–100%."""
+def _severity_label(bar_key: str, symptom_pct: float | None, severity_label: str | None = None) -> str:
+    """Use explicit OpenCV severity label when provided; never invent from AI confidence."""
+    if severity_label:
+        return str(severity_label)
     if bar_key == "healthy":
         return "Healthy"
+    if symptom_pct is None:
+        return "Unable to Assess"
     if symptom_pct >= 67:
         return "Severe"
     if symptom_pct >= 34:
         return "Moderate"
-    return "Mild"
+    if symptom_pct > 0:
+        return "Mild"
+    return "Unable to Assess"
 
 
-def _resolve_severity_pct(scores: dict[str, float], bar_key: str, severity_pct: float | None) -> float:
+def _resolve_severity_pct(
+    bar_key: str, severity_pct: float | None, severity_label: str | None = None
+) -> float | None:
+    """
+    Only accept an explicit symptom extent from OpenCV assessment.
+    Do not fall back to classification confidence / score share.
+    """
     if bar_key == "healthy":
-        return 0.0
+        if severity_label and severity_label != "Healthy":
+            return None if severity_pct is None else min(100.0, float(severity_pct))
+        return 0.0 if severity_pct is None else min(100.0, max(0.0, float(severity_pct)))
+    if severity_label == "Unable to Assess":
+        return None
     if severity_pct is not None and severity_pct >= 0:
         return min(100.0, float(severity_pct))
-    healthy = float(scores.get("healthy") or 0)
-    disease_sum = sum(float(scores.get(key) or 0) for key in ("tlcv", "early_blight", "spotted_wilt"))
-    total = healthy + disease_sum
-    if total <= 0:
-        return 0.0
-    return min(100.0, round((disease_sum / total) * 1000) / 10)
+    return None
 
 
 def _build_user_message(
-    scores: dict[str, float], top: dict[str, Any], severity_pct: float | None = None
+    scores: dict[str, float],
+    top: dict[str, Any],
+    severity_pct: float | None = None,
+    severity_label: str | None = None,
 ) -> str:
     bar_key = top["bar_key"]
     pct = top["pct"]
-    symptom_pct = _resolve_severity_pct(scores, bar_key, severity_pct)
+    symptom_pct = _resolve_severity_pct(bar_key, severity_pct, severity_label)
     facts = DISEASE_FACTS.get(bar_key, DISEASE_FACTS["healthy"])
-    severity = _severity_label(bar_key, symptom_pct)
+    severity = _severity_label(bar_key, symptom_pct, severity_label)
 
     payload = {
         "scores_percent": scores,
@@ -192,9 +206,11 @@ def _build_user_message(
         "trusted_facts": facts,
         "rules": [
             "Use trusted_facts as the source of truth; do not invent new chemicals, doses, or products.",
-            "confidence_percent is AI certainty about the disease name; severity_band comes from symptom_severity_percent (visible extent).",
+            "confidence_percent is AI certainty about the disease name only; never treat it as severity.",
+            "severity_band comes from separate OpenCV symptom assessment (or Unable to Assess).",
             "If margin_over_second is under 15 and top is not healthy, mention uncertainty and suggest rescanning.",
             "If symptom_severity_percent is 100 and top is not healthy, set isCriticalRemoval true and prioritize immediate leaf removal.",
+            "If severity_band is Unable to Assess, give cautious general guidance without inventing an extent percentage.",
             "Keep actionSteps ordered and practical for a smallholder tomato farm.",
         ],
     }
@@ -224,7 +240,9 @@ def _extract_json_object(text: str) -> dict[str, Any]:
     return json.loads(cleaned)
 
 
-def _normalize_guide(data: dict[str, Any], bar_key: str, symptom_pct: float) -> dict[str, Any]:
+def _normalize_guide(
+    data: dict[str, Any], bar_key: str, symptom_pct: float | None
+) -> dict[str, Any]:
     facts = DISEASE_FACTS.get(bar_key, DISEASE_FACTS["healthy"])
     disease_name = str(data.get("diseaseName") or DISPLAY_NAMES.get(bar_key, bar_key)).strip()
 
@@ -241,7 +259,7 @@ def _normalize_guide(data: dict[str, Any], bar_key: str, symptom_pct: float) -> 
         prevention = [str(s).strip() for s in prevention if str(s).strip()]
 
     is_critical = bool(data.get("isCriticalRemoval"))
-    if bar_key != "healthy" and symptom_pct >= 100:
+    if bar_key != "healthy" and symptom_pct is not None and symptom_pct >= 100:
         is_critical = True
 
     return {
@@ -256,15 +274,30 @@ def _normalize_guide(data: dict[str, Any], bar_key: str, symptom_pct: float) -> 
     }
 
 
-def _fallback_guide(bar_key: str, _confidence_pct: float, symptom_pct: float) -> dict[str, Any]:
+def _fallback_guide(
+    bar_key: str,
+    _confidence_pct: float,
+    symptom_pct: float | None,
+    severity_label: str | None = None,
+) -> dict[str, Any]:
     facts = DISEASE_FACTS.get(bar_key, DISEASE_FACTS["healthy"])
     is_healthy = bar_key == "healthy"
-    severity = _severity_label(bar_key, symptom_pct)
+    severity = _severity_label(bar_key, symptom_pct, severity_label)
     action_steps = list(facts["action_steps"])
-    is_critical = not is_healthy and symptom_pct >= 100
+    is_critical = (
+        not is_healthy
+        and symptom_pct is not None
+        and symptom_pct >= 100
+        and severity != "Unable to Assess"
+    )
 
     if is_healthy:
         urgency = "Keep up regular monitoring to catch problems early."
+    elif severity == "Unable to Assess":
+        urgency = (
+            "Severity could not be measured from this image. Confirm symptoms on the plant "
+            "before treating; follow disease-specific steps cautiously."
+        )
     elif is_critical:
         urgency = (
             "Critical (severity 100%): remove this leaf immediately and destroy it away from the farm. "
@@ -275,11 +308,11 @@ def _fallback_guide(bar_key: str, _confidence_pct: float, symptom_pct: float) ->
             *action_steps,
         ]
     elif severity == "Severe":
-        urgency = f"Urgent (severity {_format_pct(symptom_pct)}%): start treatment within 24–48 hours."
+        urgency = f"Urgent (severity {_format_pct(symptom_pct or 0)}%): start treatment within 24–48 hours."
     elif severity == "Moderate":
-        urgency = f"Moderate (severity {_format_pct(symptom_pct)}%): treat this week before it spreads."
+        urgency = f"Moderate (severity {_format_pct(symptom_pct or 0)}%): treat this week before it spreads."
     else:
-        urgency = f"Mild (severity {_format_pct(symptom_pct)}%): monitor closely and treat if symptoms worsen."
+        urgency = f"Mild (severity {_format_pct(symptom_pct or 0)}%): monitor closely and treat if symptoms worsen."
 
     return {
         "diseaseName": DISPLAY_NAMES.get(bar_key, bar_key),
@@ -293,11 +326,14 @@ def _fallback_guide(bar_key: str, _confidence_pct: float, symptom_pct: float) ->
 
 
 def fetch_care_recommendation(
-    scores_raw: dict[str, Any] | None, severity_pct: float | None = None
+    scores_raw: dict[str, Any] | None,
+    severity_pct: float | None = None,
+    severity_label: str | None = None,
 ) -> dict[str, Any]:
     """
     Returns { ok, guide?, error?, detail?, top? }.
     On Groq failure, ok may still be true with guide from rules fallback.
+    Severity must come from OpenCV assessment (severity_pct / severity_label), never from confidence.
     """
     scores = _normalize_scores(scores_raw)
     top = _find_top(scores)
@@ -306,14 +342,21 @@ def fetch_care_recommendation(
 
     bar_key = top["bar_key"]
     pct = top["pct"]
-    symptom_pct = _resolve_severity_pct(scores, bar_key, severity_pct)
+    symptom_pct = _resolve_severity_pct(bar_key, severity_pct, severity_label)
+    label = _severity_label(bar_key, symptom_pct, severity_label)
+    top_payload = {
+        "barKey": bar_key,
+        "pct": pct,
+        "severityPct": symptom_pct,
+        "severityLabel": label,
+    }
 
     if not groq_is_configured():
         return {
             "ok": True,
-            "top": {"barKey": bar_key, "pct": pct, "severityPct": symptom_pct},
+            "top": top_payload,
             "scores": scores,
-            "guide": _fallback_guide(bar_key, pct, symptom_pct),
+            "guide": _fallback_guide(bar_key, pct, symptom_pct, label),
             "groq_used": False,
             "message": "GROQ_API_KEY not set; returned rule-based guide.",
         }
@@ -327,7 +370,10 @@ def fetch_care_recommendation(
         "max_tokens": 900,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": _build_user_message(scores, top, symptom_pct)},
+            {
+                "role": "user",
+                "content": _build_user_message(scores, top, symptom_pct, label),
+            },
         ],
     }
 
@@ -342,10 +388,10 @@ def fetch_care_recommendation(
             timeout=45,
         )
     except requests.RequestException as exc:
-        guide = _fallback_guide(bar_key, pct, symptom_pct)
+        guide = _fallback_guide(bar_key, pct, symptom_pct, label)
         return {
             "ok": True,
-            "top": {"barKey": bar_key, "pct": pct, "severityPct": symptom_pct},
+            "top": top_payload,
             "scores": scores,
             "guide": guide,
             "groq_used": False,
@@ -363,10 +409,10 @@ def fetch_care_recommendation(
                 detail = str(err)
         except ValueError:
             pass
-        guide = _fallback_guide(bar_key, pct, symptom_pct)
+        guide = _fallback_guide(bar_key, pct, symptom_pct, label)
         return {
             "ok": True,
-            "top": {"barKey": bar_key, "pct": pct, "severityPct": symptom_pct},
+            "top": top_payload,
             "scores": scores,
             "guide": guide,
             "groq_used": False,
@@ -379,12 +425,12 @@ def fetch_care_recommendation(
         payload = response.json()
         content = payload["choices"][0]["message"]["content"]
         parsed = _extract_json_object(content)
-        guide = _normalize_guide(parsed, bar_key, symptom_pct)
+        guide = _normalize_guide(parsed, bar_key, symptom_pct if symptom_pct is not None else 0.0)
     except (KeyError, IndexError, json.JSONDecodeError, TypeError) as exc:
-        guide = _fallback_guide(bar_key, pct, symptom_pct)
+        guide = _fallback_guide(bar_key, pct, symptom_pct, label)
         return {
             "ok": True,
-            "top": {"barKey": bar_key, "pct": pct, "severityPct": symptom_pct},
+            "top": top_payload,
             "scores": scores,
             "guide": guide,
             "groq_used": False,
@@ -394,7 +440,7 @@ def fetch_care_recommendation(
 
     return {
         "ok": True,
-        "top": {"barKey": bar_key, "pct": pct, "severityPct": symptom_pct},
+        "top": top_payload,
         "scores": scores,
         "guide": guide,
         "groq_used": True,

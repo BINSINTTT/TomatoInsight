@@ -15,7 +15,7 @@
 
   /**
    * @param {{ healthy?: number, tlcv?: number, early_blight?: number, spotted_wilt?: number }} scores
-   * @param {{ severityPct?: number }} [options]
+   * @param {{ severityPct?: number|null, severityLabel?: string }} [options]
    * @returns {Promise<{ ok: boolean, guide?: object, groqUsed?: boolean, error?: string, detail?: string }>}
    */
   async function fetchCareRecommendation(scores, options) {
@@ -28,6 +28,10 @@
     const severityPct = Number(options?.severityPct);
     if (Number.isFinite(severityPct) && severityPct >= 0) {
       body.severity_pct = Math.min(100, severityPct);
+    }
+    const severityLabel = String(options?.severityLabel || "").trim();
+    if (severityLabel) {
+      body.severity_label = severityLabel;
     }
 
     try {

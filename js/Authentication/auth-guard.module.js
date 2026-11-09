@@ -1,5 +1,11 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 import { bindUserDataSync } from "../Firebase/user-data-sync.module.js";
 import "../Firebase/credits.module.js";
 import "../Firebase/payments.module.js";
@@ -14,7 +20,7 @@ function showSignedInApp() {
 }
 
 if (authMode === "required" && !config?.apiKey) {
-  window.location.replace("landing.html");
+  window.location.replace("login.html");
 }
 
 function safeAppPath(raw) {
@@ -26,15 +32,27 @@ function safeAppPath(raw) {
   return raw;
 }
 
+function rememberPreferred() {
+  return window.TomatoInsightAuthSession?.readRememberPreference?.() ?? true;
+}
+
 if (authMode && config?.apiKey) {
   const app = getApps().length ? getApps()[0] : initializeApp(config);
   const auth = getAuth(app);
   bindUserDataSync(auth);
 
+  setPersistence(
+    auth,
+    rememberPreferred() ? browserLocalPersistence : browserSessionPersistence
+  ).catch((err) => {
+    console.warn("[TomatoInsight] Remember me persistence on guard:", err);
+  });
+
   onAuthStateChanged(auth, (user) => {
     window.__tomatoInsightAccountName = user?.displayName || "";
     if (user) {
       showSignedInApp();
+      // Keep the durable session flag in sync with the stored Remember me preference.
       window.TomatoInsightAuthSession?.markSignedIn?.();
       window.dispatchEvent(
         new CustomEvent("tomatoInsight:accountName", {
@@ -46,19 +64,24 @@ if (authMode && config?.apiKey) {
     }
 
     if (authMode === "required" && !user) {
-      window.location.replace("landing.html");
+      const nextPath = safeAppPath(window.location.pathname + window.location.search);
+      const loginUrl = nextPath
+        ? `login.html?next=${encodeURIComponent(nextPath)}`
+        : "login.html";
+      window.location.replace(loginUrl);
       return;
     }
     if (authMode === "guest" && user) {
-      const next = safeAppPath(new URLSearchParams(window.location.search).get("next"));
-      if (next) window.location.replace(next);
+      const next =
+        safeAppPath(new URLSearchParams(window.location.search).get("next")) || "/index.html";
+      window.location.replace(next);
     }
   });
 
   if (authMode === "required") {
     window.setTimeout(() => {
       if (!document.documentElement.classList.contains("auth-confirmed")) {
-        window.location.replace("landing.html");
+        window.location.replace("login.html");
       }
     }, 12000);
   }

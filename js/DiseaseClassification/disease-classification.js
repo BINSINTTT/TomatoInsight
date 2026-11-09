@@ -1,12 +1,14 @@
 (function () {
   const DEFAULTS = {
     classifyProxyUrl: (window.TOMATO_INSIGHT_API_BASE || "http://127.0.0.1:8765").replace(/\/$/, "") + "/classify",
+    severityProxyUrl:
+      (window.TOMATO_INSIGHT_API_BASE || "http://127.0.0.1:8765").replace(/\/$/, "") + "/assess-severity",
     predictUrl: "https://predict-6ae38ddbc663e1b4d2a97fd5-dproatj77a-de.a.run.app/predict",
     apiKey: "",
     /** null = use the deployment defaults, so results match the Ultralytics Predict page. */
     conf: null,
     iou: null,
-  
+
     imgsz: null,
   };
 
@@ -42,45 +44,20 @@
     return n > 1 ? n / 100 : n;
   }
 
-  function barKeyForName(name) {
-    const key = normalizeKey(name);
-    if (!key) return "";
-    for (const { barKey, names } of DISEASE_LABELS) {
-      if (names.some((label) => key === normalizeKey(label) || key.includes(normalizeKey(label)))) {
-        return barKey;
-      }
-    }
-    return "";
-  }
-
-  function boxArea(box) {
-    if (!box || typeof box !== "object") return 0;
-    const x1 = Number(box.x1 ?? box.xmin ?? box.left ?? box[0]);
-    const y1 = Number(box.y1 ?? box.ymin ?? box.top ?? box[1]);
-    const x2 = Number(box.x2 ?? box.xmax ?? box.right ?? box[2]);
-    const y2 = Number(box.y2 ?? box.ymax ?? box.bottom ?? box[3]);
-    if (![x1, y1, x2, y2].every(Number.isFinite)) return 0;
-    return Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
-  }
-
   function collectResultItems(payload) {
     const items = [];
     if (!payload || typeof payload !== "object") return items;
     if (Array.isArray(payload.images)) {
       payload.images.forEach((image) => {
-        const shape = Array.isArray(image?.shape) ? image.shape : null;
-        const height = Number(shape?.[0]) || 0;
-        const width = Number(shape?.[1]) || 0;
-        const frameArea = height > 0 && width > 0 ? height * width : 0;
         const rows = Array.isArray(image?.results) ? image.results : [];
-        rows.forEach((item) => items.push({ item, frameArea }));
+        rows.forEach((item) => items.push({ item }));
       });
     }
     if (Array.isArray(payload.results)) {
-      payload.results.forEach((item) => items.push({ item, frameArea: 0 }));
+      payload.results.forEach((item) => items.push({ item }));
     }
     if (Array.isArray(payload.predictions)) {
-      payload.predictions.forEach((item) => items.push({ item, frameArea: 0 }));
+      payload.predictions.forEach((item) => items.push({ item }));
     }
     return items;
   }
@@ -104,64 +81,69 @@
     return results.sort((a, b) => b.confidence - a.confidence);
   }
 
-  /**
-   * Symptom severity % = how much of the leaf/image shows disease (extent),
-   * not how sure the model is about the class name (confidence).
-   * Prefers detection box coverage; falls back to disease vs healthy score share.
-   */
-  function computeSymptomSeverityPct(payload, scores) {
-    let diseaseArea = 0;
-    let imageArea = 0;
-    let usedNormalizedBoxes = false;
-
-    const images = Array.isArray(payload?.images) ? payload.images : [];
-    images.forEach((image) => {
-      const shape = Array.isArray(image?.shape) ? image.shape : null;
-      const height = Number(shape?.[0]) || 0;
-      const width = Number(shape?.[1]) || 0;
-      const frameArea = height > 0 && width > 0 ? height * width : 0;
-      const rows = Array.isArray(image?.results) ? image.results : [];
-      let frameDisease = 0;
-      rows.forEach((item) => {
-        const barKey = barKeyForName(item?.name || item?.class_name || item?.class || item?.label);
-        if (!barKey || barKey === "healthy") return;
-        const area = boxArea(item?.box || item?.bbox || item?.bounding_box);
-        if (!(area > 0)) return;
-        if (frameArea > 0) {
-          frameDisease += area;
-          return;
-        }
-        if (area <= 1.0001) {
-          frameDisease += area;
-          usedNormalizedBoxes = true;
-        }
-      });
-      if (!(frameDisease > 0)) return;
-      diseaseArea += frameDisease;
-      imageArea += frameArea > 0 ? frameArea : 1;
+  function topBarKeyFromScores(scores) {
+    let topKey = "";
+    let topPct = -1;
+    ["healthy", "tlcv", "early_blight", "spotted_wilt"].forEach((key) => {
+      const pct = Math.min(100, Math.max(0, Number(scores?.[key]) || 0));
+      if (pct > topPct) {
+        topPct = pct;
+        topKey = key;
+      }
     });
+    return topPct > 0 ? topKey : "";
+  }
 
-    if (imageArea > 0 && diseaseArea > 0) {
-      const pct = (diseaseArea / imageArea) * 100;
-      return {
-        severityPct: Math.min(100, Math.round(pct * 10) / 10),
-        severitySource: usedNormalizedBoxes ? "box_coverage_norm" : "box_coverage",
-      };
-    }
-
-    const healthy = Math.min(100, Math.max(0, Number(scores?.healthy) || 0));
-    const diseaseSum = ["tlcv", "early_blight", "spotted_wilt"].reduce(
-      (sum, key) => sum + Math.min(100, Math.max(0, Number(scores?.[key]) || 0)),
-      0
-    );
-    const total = healthy + diseaseSum;
-    if (total <= 0) {
-      return { severityPct: 0, severitySource: "none" };
-    }
-    return {
-      severityPct: Math.min(100, Math.round((diseaseSum / total) * 1000) / 10),
-      severitySource: "disease_share",
+  /**
+   * Separate OpenCV symptom assessment. Never uses AI confidence.
+   */
+  async function assessSymptomSeverity(file, diseaseKey) {
+    const unable = {
+      severityPct: null,
+      severityLabel: "Unable to Assess",
+      affectedAreaPct: null,
+      severityAssessable: false,
+      severitySource: "opencv_unavailable",
+      severityReason: "request_failed",
     };
+
+    const url = String(config.severityProxyUrl || "").trim();
+    if (!url || !file || !diseaseKey) return unable;
+
+    try {
+      const form = new FormData();
+      form.append("file", file, file.name || "upload.jpg");
+      form.append("disease", diseaseKey);
+      form.append("bar_key", diseaseKey);
+      const response = await fetch(url, { method: "POST", body: form });
+      const payload = await readJsonResponse(response);
+      if (!response.ok || !payload?.ok) {
+        return {
+          ...unable,
+          severityReason: payload?.reason || payload?.error || `http_${response.status}`,
+        };
+      }
+
+      const label = String(payload.severity || "Unable to Assess");
+      const measurable = Boolean(payload.measurable);
+      const areaRaw = payload.affected_area_pct;
+      const areaPct =
+        measurable && areaRaw != null && Number.isFinite(Number(areaRaw))
+          ? Math.min(100, Math.max(0, Number(areaRaw)))
+          : null;
+
+      return {
+        severityPct: areaPct,
+        severityLabel: label,
+        affectedAreaPct: areaPct,
+        severityAssessable: measurable && label !== "Unable to Assess",
+        severitySource: "opencv",
+        severityReason: String(payload.reason || ""),
+      };
+    } catch (err) {
+      console.warn("[TomatoInsight] Severity assessment failed:", err);
+      return { ...unable, severityReason: "network" };
+    }
   }
 
   function mapToBarScores(predictions) {
@@ -336,7 +318,10 @@
 
       if (!stillCurrent()) return { ok: false, cancelled: true };
 
-      const severity = computeSymptomSeverityPct(result, scores);
+      const diseaseKey = topBarKeyFromScores(scores);
+      const severity = await assessSymptomSeverity(file, diseaseKey);
+      if (!stillCurrent()) return { ok: false, cancelled: true };
+
       console.log("[TomatoInsight] Bar scores:", scores, "Severity:", severity);
       window.TomatoInsightScan?.setClassificationScores?.(scores, severity);
       await new Promise((resolve) => setTimeout(resolve, 480));
@@ -360,6 +345,7 @@
     classifyImageFile,
     mapToBarScores,
     extractPredictions,
-    computeSymptomSeverityPct,
+    assessSymptomSeverity,
+    topBarKeyFromScores,
   };
 })();

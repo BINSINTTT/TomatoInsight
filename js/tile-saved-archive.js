@@ -31,11 +31,12 @@
     if (mode === "history") {
       return { className: "badge badge--watch", label: "Issue" };
     }
-    /* Alert = Severe symptom extent (67–100%); Watch = Mild/Moderate. */
+    /* Alert = Severe OpenCV extent; Watch = Mild/Moderate/Unable to Assess. Never AI confidence. */
+    const label = String(summary.severityLabel || "").toLowerCase();
     const severityPct = Number.isFinite(Number(summary.severityPct))
       ? Number(summary.severityPct)
-      : summary.pct;
-    if (severityPct >= 67) {
+      : null;
+    if (label === "severe" || (severityPct != null && severityPct >= 67)) {
       return { className: "badge badge--alert", label: "Alert" };
     }
     return { className: "badge badge--watch", label: "Watch" };
@@ -43,10 +44,11 @@
 
   function statusBucket(summary) {
     if (!summary || summary.barKey === "healthy") return "healthy";
+    const label = String(summary.severityLabel || "").toLowerCase();
     const severityPct = Number.isFinite(Number(summary.severityPct))
       ? Number(summary.severityPct)
-      : summary.pct;
-    if (severityPct >= 67) return "alert";
+      : null;
+    if (label === "severe" || (severityPct != null && severityPct >= 67)) return "alert";
     return "watch";
   }
 
@@ -145,7 +147,16 @@
         scores: info.scores || {},
         topBarKey: info.topBarKey ?? null,
         topPct: info.topPct ?? 0,
-        severityPct: Math.min(100, Math.max(0, Number(info.severityPct) || 0)),
+        severityPct:
+          info.severityPct == null || info.severityPct === ""
+            ? null
+            : Math.min(100, Math.max(0, Number(info.severityPct))),
+        severityLabel: info.severityLabel != null ? String(info.severityLabel) : null,
+        affectedAreaPct:
+          info.affectedAreaPct == null || info.affectedAreaPct === ""
+            ? null
+            : Math.min(100, Math.max(0, Number(info.affectedAreaPct))),
+        severityAssessable: Boolean(info.severityAssessable),
       };
     }
     return map;
@@ -549,13 +560,19 @@
         if (detailImage) detailImage.removeAttribute("src");
       }
 
+      const severityMeta = {
+        severityPct: info.severityPct,
+        severityLabel: info.severityLabel,
+        affectedAreaPct: info.affectedAreaPct,
+        severityAssessable: info.severityAssessable,
+      };
       setClassificationScores(info.scores || {});
-      setScanHighlight(info.scores || {}, info.severityPct);
+      setScanHighlight(info.scores || {}, severityMeta);
       const top =
         summary && summary.pct > 0
           ? { barKey: summary.barKey, pct: summary.pct }
           : window.TilePlantStorage?.findTopScore?.(info.scores);
-      syncTreatmentButton(top, tileNum, info.scores || {}, info.severityPct);
+      syncTreatmentButton(top, tileNum, info.scores || {}, severityMeta);
 
       detailRoot.hidden = false;
       document.body.classList.add("modal-open");

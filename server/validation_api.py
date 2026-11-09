@@ -15,6 +15,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from groq.recommendations import fetch_care_recommendation, groq_is_configured
+from severity.assess import assess_severity
 
 ROOT = Path(__file__).resolve().parent.parent
 HTML_DIR = ROOT / "html"
@@ -129,6 +130,31 @@ def classify():
     )
 
 
+@app.route("/assess-severity", methods=["POST"])
+def assess_severity_route():
+    """
+    Separate symptom-extent assessment (OpenCV). Does not use AI confidence.
+    Multipart: file + disease|bar_key (healthy|early_blight|tlcv|spotted_wilt).
+    """
+    uploaded = request.files.get("file")
+    if uploaded is None or uploaded.filename == "":
+        return jsonify({"error": "missing_file", "message": "Send multipart field named file."}), 400
+
+    image_bytes = uploaded.read()
+    if not image_bytes:
+        return jsonify({"error": "empty_file", "message": "Uploaded file is empty."}), 400
+
+    disease = (
+        request.form.get("disease")
+        or request.form.get("bar_key")
+        or request.form.get("barKey")
+        or ""
+    ).strip()
+    result = assess_severity(image_bytes, disease)
+    status = 200 if result.get("ok") else 400
+    return jsonify(result), status
+
+
 @app.route("/recommend", methods=["POST"])
 def recommend():
     body = request.get_json(silent=True) or {}
@@ -147,7 +173,13 @@ def recommend():
     except (TypeError, ValueError):
         severity_pct = None
 
-    result = fetch_care_recommendation(scores, severity_pct)
+    severity_label = body.get("severity_label") or body.get("severityLabel") or body.get("severity")
+    if isinstance(severity_label, str):
+        severity_label = severity_label.strip() or None
+    else:
+        severity_label = None
+
+    result = fetch_care_recommendation(scores, severity_pct, severity_label)
     if not result.get("ok"):
         return jsonify(result), 400
 
@@ -186,7 +218,9 @@ def site_root():
 
 @app.route("/<path:path>", methods=["GET"])
 def static_files(path: str):
-    if path.startswith("validate") or path.startswith("classify") or path.startswith("recommend") or path.startswith("health"):
+    if path.startswith(
+        ("validate", "classify", "recommend", "health", "assess-severity")
+    ):
         return jsonify({"error": "not_found"}), 404
 
     root_target = ROOT / path
