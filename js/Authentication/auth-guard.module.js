@@ -54,8 +54,10 @@ if (authMode && config?.apiKey) {
 
     // Email/password accounts must verify Gmail before entering the app.
     if (user && !user.emailVerified) {
-      window.TomatoInsightAuthSession?.markSignedOut?.();
       if (authMode === "required") {
+        // Avoid fighting an in-progress verified redirect.
+        if (window.__tomatoInsightVerifyRedirecting) return;
+        window.TomatoInsightAuthSession?.markSignedOut?.();
         const email = encodeURIComponent(user.email || "");
         try {
           await firebaseSignOut(auth);
@@ -65,7 +67,7 @@ if (authMode && config?.apiKey) {
         window.location.replace(`login.html?verify=1${email ? `&email=${email}` : ""}`);
         return;
       }
-      // Guest auth pages: stay here so the verify panel can show. Do not enter the app.
+      // Guest auth pages: stay signed in so verify polling can reload() only.
       return;
     }
 
@@ -73,16 +75,26 @@ if (authMode && config?.apiKey) {
       showSignedInApp();
       // Keep the durable session flag in sync with the stored Remember me preference.
       window.TomatoInsightAuthSession?.markSignedIn?.();
+      // Clear unfinished signup gate so landing/login cannot bounce verified users back.
+      try {
+        localStorage.removeItem("tomatoInsight.pendingSignup");
+        sessionStorage.removeItem("tomatoInsight.pendingVerifyEmail");
+        sessionStorage.removeItem("tomatoInsight.pendingVerifyPassword");
+        sessionStorage.removeItem("tomatoInsight.verifyResendUntil");
+      } catch {
+        /* ignore */
+      }
       window.dispatchEvent(
         new CustomEvent("tomatoInsight:accountName", {
           detail: { uid: user.uid, displayName: user.displayName || "" },
         })
       );
-    } else {
+    } else if (!window.__tomatoInsightVerifyRedirecting) {
       window.TomatoInsightAuthSession?.markSignedOut?.();
     }
 
     if (authMode === "required" && !user) {
+      if (window.__tomatoInsightVerifyRedirecting) return;
       const nextPath = safeAppPath(window.location.pathname + window.location.search);
       const loginUrl = nextPath
         ? `login.html?next=${encodeURIComponent(nextPath)}`
@@ -91,6 +103,8 @@ if (authMode && config?.apiKey) {
       return;
     }
     if (authMode === "guest" && user) {
+      // Let auth-forms own the one-shot dashboard navigation after verify.
+      if (window.__tomatoInsightVerifyRedirecting) return;
       // Verified users leave auth pages for the farm dashboard (index).
       const params = new URLSearchParams(window.location.search);
       const next = safeAppPath(params.get("next")) || "/index.html";
@@ -100,7 +114,10 @@ if (authMode && config?.apiKey) {
 
   if (authMode === "required") {
     window.setTimeout(() => {
-      if (!document.documentElement.classList.contains("auth-confirmed")) {
+      if (
+        !document.documentElement.classList.contains("auth-confirmed") &&
+        !window.__tomatoInsightVerifyRedirecting
+      ) {
         window.location.replace("login.html");
       }
     }, 12000);

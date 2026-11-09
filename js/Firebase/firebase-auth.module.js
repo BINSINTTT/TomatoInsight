@@ -261,54 +261,55 @@ window.TomatoInsightAuth = {
     if (!password) return { ok: false, error: "Enter your password to resend the verification email." };
     try {
       const credential = await signInWithEmailAndPassword(auth, trimmed, password);
+      await credential.user?.reload?.();
       if (credential.user?.emailVerified) {
         // Keep the session so the guest auth page can open the dashboard.
         window.TomatoInsightAuthSession?.markSignedIn?.();
         return { ok: true, alreadyVerified: true, email: trimmed };
       }
       await sendEmailVerification(credential.user, verificationActionSettings());
-      await firebaseSignOut(auth);
-      window.TomatoInsightAuthSession?.markSignedOut?.();
+      // Stay signed in on the verify page so polling can reload() without sign-in/out races.
       return { ok: true, email: trimmed };
     } catch (err) {
       console.error("[TomatoInsight] resendVerificationEmail", err);
-      try {
-        await firebaseSignOut(auth);
-      } catch {
-        /* ignore */
-      }
-      window.TomatoInsightAuthSession?.markSignedOut?.();
       return { ok: false, error: authErrorMessage(err) };
     }
   },
 
   /**
-   * Sign in and report whether the Gmail address is verified.
-   * If verified, the Firebase session stays active for dashboard entry.
+   * Ensure a session for this Gmail and report verification.
+   * Keeps the unverified session alive for reload-only polling (no sign-out),
+   * which prevents dashboard ↔ login bounce loops.
    */
   async checkEmailVerified({ email, password }) {
     if (!auth) return { ok: false, error: "Firebase is not configured." };
+    if (window.__tomatoInsightVerifyRedirecting) {
+      return { ok: true, verified: true, email: String(email || "").trim() };
+    }
     const trimmed = String(email || "").trim();
     if (!isAllowedGmail(trimmed)) return { ok: false, error: gmailOnlyError() };
     if (!password) return { ok: false, error: "Enter your password." };
     try {
+      const current = auth.currentUser;
+      if (current && String(current.email || "").toLowerCase() === trimmed.toLowerCase()) {
+        await current.reload();
+        if (current.emailVerified) {
+          window.TomatoInsightAuthSession?.markSignedIn?.();
+          return { ok: true, verified: true, email: trimmed };
+        }
+        return { ok: true, verified: false, email: trimmed };
+      }
+
       const credential = await signInWithEmailAndPassword(auth, trimmed, password);
       await credential.user?.reload?.();
       if (credential.user?.emailVerified) {
         window.TomatoInsightAuthSession?.markSignedIn?.();
         return { ok: true, verified: true, email: trimmed };
       }
-      await firebaseSignOut(auth);
-      window.TomatoInsightAuthSession?.markSignedOut?.();
+      // Do not sign out — later polls only reload this same session.
       return { ok: true, verified: false, email: trimmed };
     } catch (err) {
       console.error("[TomatoInsight] checkEmailVerified", err);
-      try {
-        await firebaseSignOut(auth);
-      } catch {
-        /* ignore */
-      }
-      window.TomatoInsightAuthSession?.markSignedOut?.();
       return { ok: false, error: authErrorMessage(err) };
     }
   },

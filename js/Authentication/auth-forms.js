@@ -234,6 +234,8 @@
   const PENDING_SIGNUP_KEY = "tomatoInsight.pendingSignup";
   let verifyResendTimer = null;
   let verifyPollTimer = null;
+  let verifyPollInFlight = false;
+  let verifyRedirecting = false;
   let signupLeaveGuardBound = false;
 
   function storePendingVerifyPassword(password) {
@@ -348,13 +350,22 @@
   }
 
   async function openDashboardAfterVerified(remember = true) {
+    if (verifyRedirecting) return;
+    verifyRedirecting = true;
+    window.__tomatoInsightVerifyRedirecting = true;
+    stopVerifyStatusPolling();
     setSignupLeaveGuard(false);
-    setSignupLock(false);
+    setSignupLock(true, "Email verified. Opening your farm dashboard…");
     clearPendingVerifySecrets();
     writeRememberPreference(remember);
-    await window.TomatoInsightAuth?.setRememberSession?.(remember);
+    try {
+      await window.TomatoInsightAuth?.setRememberSession?.(remember);
+    } catch {
+      /* ignore */
+    }
     window.TomatoInsightAuthSession?.markSignedIn?.(remember);
-    window.location.href = "index.html";
+    // Replace so Back does not return to the verify/signup loop.
+    window.location.replace("index.html");
   }
 
   function readVerifyResendUntil() {
@@ -539,22 +550,28 @@
 
   function startVerifyStatusPolling() {
     stopVerifyStatusPolling();
+    if (verifyRedirecting) return;
     const poll = async () => {
+      if (verifyRedirecting || verifyPollInFlight) return;
       const emailEl = document.getElementById("verify-email-address");
       const email = String(emailEl?.textContent || "").trim();
       const password = readPendingVerifyPassword();
       if (!email || !password || emailValidationError(email)) return;
       const stage = document.getElementById("auth-panel-stage");
       if (!stage?.classList.contains("is-verify")) return;
-      const result = await window.TomatoInsightAuth?.checkEmailVerified?.({ email, password });
-      if (result?.ok && result.verified) {
-        stopVerifyStatusPolling();
-        setSignupLock(true, "Email verified. Opening your farm dashboard…");
-        showFormSuccess(
-          document.getElementById("verify-form-success"),
-          "Email verified. Opening your farm dashboard…"
-        );
-        await openDashboardAfterVerified(true);
+      verifyPollInFlight = true;
+      try {
+        const result = await window.TomatoInsightAuth?.checkEmailVerified?.({ email, password });
+        if (result?.ok && result.verified) {
+          stopVerifyStatusPolling();
+          showFormSuccess(
+            document.getElementById("verify-form-success"),
+            "Email verified. Opening your farm dashboard…"
+          );
+          await openDashboardAfterVerified(true);
+        }
+      } finally {
+        verifyPollInFlight = false;
       }
     };
     verifyPollTimer = window.setInterval(poll, 4000);
