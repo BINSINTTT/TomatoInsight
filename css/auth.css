@@ -949,7 +949,8 @@ html.auth-start-signup .auth-slideshow__caption--signup,
 }
 
 .auth-panel--forgot,
-.auth-panel--signup {
+.auth-panel--signup,
+.auth-panel--verify {
   position: absolute;
   top: 0;
   left: 0;
@@ -963,14 +964,17 @@ html.auth-start-signup .auth-slideshow__caption--signup,
   transform: translateY(18px);
 }
 
-.auth-panel--signup {
+.auth-panel--signup,
+.auth-panel--verify {
   transform: translateX(28px) scale(0.985);
 }
 
 .auth-panel-stage.is-forgot .auth-panel--login,
 .auth-panel-stage.is-signup .auth-panel--login,
+.auth-panel-stage.is-verify .auth-panel--login,
 html.auth-start-forgot .auth-panel--login,
-html.auth-start-signup .auth-panel--login {
+html.auth-start-signup .auth-panel--login,
+html.auth-start-verify .auth-panel--login {
   position: absolute;
   top: 0;
   left: 0;
@@ -985,19 +989,57 @@ html.auth-start-forgot .auth-panel--login {
 }
 
 .auth-panel-stage.is-signup .auth-panel--login,
-html.auth-start-signup .auth-panel--login {
+.auth-panel-stage.is-verify .auth-panel--login,
+html.auth-start-signup .auth-panel--login,
+html.auth-start-verify .auth-panel--login {
   transform: translateX(-28px) scale(0.985);
 }
 
 .auth-panel-stage.is-forgot .auth-panel--forgot,
 html.auth-start-forgot .auth-panel--forgot,
 .auth-panel-stage.is-signup .auth-panel--signup,
-html.auth-start-signup .auth-panel--signup {
+html.auth-start-signup .auth-panel--signup,
+.auth-panel-stage.is-verify .auth-panel--verify,
+html.auth-start-verify .auth-panel--verify {
   position: relative;
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
   transform: none;
+}
+
+.auth-verify {
+  text-align: center;
+  padding: 0.25rem 0 0.5rem;
+}
+
+.auth-verify__spinner {
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: 0.15rem auto 1.1rem;
+  border-radius: 999px;
+  border: 3px solid rgba(155, 43, 38, 0.18);
+  border-top-color: var(--tomato-shell, #9b2b26);
+  animation: auth-verify-spin 0.85s linear infinite;
+}
+
+@keyframes auth-verify-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.auth-verify #verify-email-address {
+  color: #2c2c2c;
+  word-break: break-word;
+}
+
+.auth-verify .auth-signin__submit {
+  margin-top: 0.35rem;
+}
+
+.auth-verify .auth-signin__forgot--center {
+  margin-top: 0.85rem;
 }
 
 .auth-panel-stage.is-ready {
@@ -1023,10 +1065,14 @@ html.auth-start-signup .auth-panel--signup {
 
   .auth-panel--forgot,
   .auth-panel--signup,
+  .auth-panel--verify,
   .auth-panel-stage.is-forgot .auth-panel--login,
   .auth-panel-stage.is-signup .auth-panel--login,
-  .auth-signin__shell.is-switching {
+  .auth-panel-stage.is-verify .auth-panel--login,
+  .auth-signin__shell.is-switching,
+  .auth-verify__spinner {
     transform: none;
+    animation: none;
   }
 }
 

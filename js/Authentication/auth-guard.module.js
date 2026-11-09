@@ -5,6 +5,7 @@ import {
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
+  signOut as firebaseSignOut,
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 import { bindUserDataSync } from "../Firebase/user-data-sync.module.js";
 import "../Firebase/credits.module.js";
@@ -48,8 +49,26 @@ if (authMode && config?.apiKey) {
     console.warn("[TomatoInsight] Remember me persistence on guard:", err);
   });
 
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
     window.__tomatoInsightAccountName = user?.displayName || "";
+
+    // Email/password accounts must verify Gmail before entering the app.
+    if (user && !user.emailVerified) {
+      window.TomatoInsightAuthSession?.markSignedOut?.();
+      if (authMode === "required") {
+        const email = encodeURIComponent(user.email || "");
+        try {
+          await firebaseSignOut(auth);
+        } catch (err) {
+          console.warn("[TomatoInsight] Could not sign out unverified user:", err);
+        }
+        window.location.replace(`login.html?verify=1${email ? `&email=${email}` : ""}`);
+        return;
+      }
+      // Guest auth pages: stay here so the verify panel can show. Do not enter the app.
+      return;
+    }
+
     if (user) {
       showSignedInApp();
       // Keep the durable session flag in sync with the stored Remember me preference.

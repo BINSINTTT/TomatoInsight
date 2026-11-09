@@ -10,6 +10,6 @@
   } else if (/\.onrender\.com$/i.test(host)) {
     window.TOMATO_INSIGHT_API_BASE = window.location.origin;
   } else {
-    window.TOMATO_INSIGHT_API_BASE = "https://tomatoinsighttestdeployment.onrender.com";
+    window.TOMATO_INSIGHT_API_BASE = "https://tomatoinsight.onrender.com";
   }
 })();

@@ -21,7 +21,7 @@
       return { mood: "happy", src: happyEmoji, alt: "Healthy" };
     }
 
-    /* Mood follows symptom severity label only — never AI confidence. */
+    /* Mood follows OpenCV symptom severity only — never AI confidence. */
     const label = String(summary.severityLabel || "").toLowerCase();
     if (label === "unable to assess" || !Number.isFinite(Number(summary.severityPct))) {
       return { mood: "worry", src: worryEmoji, alt: "Severity unable to assess" };

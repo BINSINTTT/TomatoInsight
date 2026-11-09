@@ -763,14 +763,9 @@ export async function addTopUpCredits(amount, pack = {}) {
   mountCreditToast({
     variant: "grant",
     title: `+${credits} credits added`,
-    text: paymentRulesHint
-      ? "Credits updated. Add Firestore payments rules (see HOW_TO_RUN.md) to save purchase history."
-      : remainingCreditsLine(stored.balance) ||
-        (paymentSaved
-          ? "Demo payment applied to your account."
-          : "Credits added, but the purchase row could not be saved."),
+    text: "",
     icon: "check",
-    autoHideMs: paymentRulesHint ? 9000 : 6500,
+    autoHideMs: 6500,
   });
   return {
     ok: true,

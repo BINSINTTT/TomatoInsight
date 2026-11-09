@@ -95,7 +95,7 @@
   }
 
   /**
-   * Separate symptom severity from YOLO confidence (never uses confidence %).
+   * Separate OpenCV symptom assessment. Never uses AI confidence.
    */
   async function assessSymptomSeverity(file, diseaseKey) {
     const unable = {
@@ -103,7 +103,7 @@
       severityLabel: "Unable to Assess",
       affectedAreaPct: null,
       severityAssessable: false,
-      severitySource: "severity_unavailable",
+      severitySource: "opencv_unavailable",
       severityReason: "request_failed",
     };
 
@@ -127,17 +127,21 @@
       const label = String(payload.severity || "Unable to Assess");
       const measurable = Boolean(payload.measurable);
       const areaRaw = payload.affected_area_pct;
-      const areaPct =
-        measurable && areaRaw != null && Number.isFinite(Number(areaRaw))
+      const isHealthy = diseaseKey === "healthy" || label === "Healthy";
+      const areaPct = isHealthy
+        ? areaRaw != null && Number.isFinite(Number(areaRaw))
+          ? Math.min(100, Math.max(0, Number(areaRaw)))
+          : 0
+        : measurable && areaRaw != null && Number.isFinite(Number(areaRaw))
           ? Math.min(100, Math.max(0, Number(areaRaw)))
           : null;
 
       return {
         severityPct: areaPct,
-        severityLabel: label,
+        severityLabel: isHealthy ? "Healthy" : label,
         affectedAreaPct: areaPct,
-        severityAssessable: measurable && label !== "Unable to Assess",
-        severitySource: "severity_api",
+        severityAssessable: isHealthy ? true : measurable && label !== "Unable to Assess",
+        severitySource: "opencv",
         severityReason: String(payload.reason || ""),
       };
     } catch (err) {

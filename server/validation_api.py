@@ -133,9 +133,8 @@ def classify():
 @app.route("/assess-severity", methods=["POST"])
 def assess_severity_route():
     """
-    Separate symptom-severity label from YOLO confidence.
+    Separate symptom-extent assessment (OpenCV). Does not use AI confidence.
     Multipart: file + disease|bar_key (healthy|early_blight|tlcv|spotted_wilt).
-    Image bytes are accepted for compatibility; this build does not run OpenCV.
     """
     uploaded = request.files.get("file")
     if uploaded is None or uploaded.filename == "":

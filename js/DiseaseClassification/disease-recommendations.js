@@ -82,7 +82,7 @@
   }
 
   /**
-   * Severity from the severity API only. Never from AI confidence / score share.
+   * Severity from OpenCV assessment only. Never from AI confidence / score share.
    * Provisional bands Mild 1–33 / Moderate 34–66 / Severe 67–100 when a measurable % exists.
    */
   function diseaseSeverityLabel(diseaseName, symptomScorePercent, explicitLabel) {
@@ -102,24 +102,16 @@
     const meta = normalizeSeverityMeta(severityInput) || lastSeverityMeta;
     if (top?.barKey === "healthy") {
       const area =
-        meta?.affectedAreaPct != null
-          ? meta.affectedAreaPct
-          : meta?.severityPct != null
-            ? meta.severityPct
-            : meta?.severityAssessable
-              ? 0
-              : null;
-      const label =
-        meta?.severityLabel === "Unable to Assess"
-          ? "Unable to Assess"
-          : area != null
-            ? "Healthy"
-            : meta?.severityLabel || "Unable to Assess";
+        meta?.affectedAreaPct != null && Number.isFinite(Number(meta.affectedAreaPct))
+          ? Number(meta.affectedAreaPct)
+          : meta?.severityPct != null && Number.isFinite(Number(meta.severityPct))
+            ? Number(meta.severityPct)
+            : 0;
       return {
         severityPct: area,
-        severityLabel: label,
+        severityLabel: "Healthy",
         affectedAreaPct: area,
-        severityAssessable: label === "Healthy",
+        severityAssessable: true,
       };
     }
     if (!meta) {
@@ -157,18 +149,30 @@
     }
     const diseaseName = HIGHLIGHT_NAMES[top.barKey] || DISPLAY_NAMES[top.barKey] || top.barKey;
     const resolved = resolveSeverityMeta(scores, severityInput, top);
-    const affectedAreaText =
-      resolved.affectedAreaPct != null && resolved.severityAssessable
-        ? `${fmtPct(resolved.affectedAreaPct)}%`
+    // Healthy leaves always show 0% affected area (metric stays visible).
+    const isHealthy = top.barKey === "healthy";
+    const affectedAreaPct = isHealthy
+      ? resolved.affectedAreaPct != null && Number.isFinite(Number(resolved.affectedAreaPct))
+        ? Number(resolved.affectedAreaPct)
+        : 0
+      : resolved.affectedAreaPct;
+    const affectedAreaText = isHealthy
+      ? `${fmtPct(affectedAreaPct)}%`
+      : affectedAreaPct != null && resolved.severityAssessable
+        ? `${fmtPct(affectedAreaPct)}%`
         : "—";
     return {
       diseaseName,
       confidenceText: `${fmtPct(top.pct)}%`,
-      severity: resolved.severityLabel || "Unable to Assess",
-      severityPct: resolved.severityPct,
+      severity: isHealthy
+        ? resolved.severityLabel && resolved.severityLabel !== "Unable to Assess"
+          ? resolved.severityLabel
+          : "Healthy"
+        : resolved.severityLabel || "Unable to Assess",
+      severityPct: isHealthy ? affectedAreaPct : resolved.severityPct,
       affectedAreaText,
-      affectedAreaPct: resolved.affectedAreaPct,
-      severityAssessable: resolved.severityAssessable,
+      affectedAreaPct,
+      severityAssessable: isHealthy ? true : resolved.severityAssessable,
       barKey: top.barKey,
       pct: top.pct,
     };

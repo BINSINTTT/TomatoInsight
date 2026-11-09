@@ -9,6 +9,7 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
   signOut as firebaseSignOut,
+  sendEmailVerification,
   sendPasswordResetEmail as firebaseSendPasswordResetEmail,
   fetchSignInMethodsForEmail,
   verifyPasswordResetCode as firebaseVerifyPasswordResetCode,
@@ -25,6 +26,13 @@ function isAllowedGmail(email) {
 
 function gmailOnlyError() {
   return "Email must end with @gmail.com.";
+}
+
+function verificationActionSettings() {
+  return {
+    url: new URL("login.html?verified=1", window.location.href).href,
+    handleCodeInApp: false,
+  };
 }
 
 function authErrorMessage(error) {
@@ -107,7 +115,22 @@ window.TomatoInsightAuth = {
     const trimmed = String(email || "").trim();
     if (!isAllowedGmail(trimmed)) return { ok: false, error: gmailOnlyError() };
     try {
-      await signInWithEmailAndPassword(auth, trimmed, password);
+      const credential = await signInWithEmailAndPassword(auth, trimmed, password);
+      if (credential.user && !credential.user.emailVerified) {
+        try {
+          await sendEmailVerification(credential.user, verificationActionSettings());
+        } catch (err) {
+          console.warn("[TomatoInsight] Could not resend verification on sign-in:", err);
+        }
+        await firebaseSignOut(auth);
+        window.TomatoInsightAuthSession?.markSignedOut?.();
+        return {
+          ok: false,
+          needsVerification: true,
+          email: trimmed,
+          error: "Verify your email before signing in. We sent a new link to your inbox.",
+        };
+      }
       return { ok: true };
     } catch (err) {
       console.error("[TomatoInsight] signIn", err);
@@ -125,6 +148,16 @@ window.TomatoInsightAuth = {
       if (!isAllowedGmail(signedEmail)) {
         await firebaseSignOut(auth);
         return { ok: false, error: gmailOnlyError() };
+      }
+      if (result.user && !result.user.emailVerified) {
+        await firebaseSignOut(auth);
+        window.TomatoInsightAuthSession?.markSignedOut?.();
+        return {
+          ok: false,
+          needsVerification: true,
+          email: signedEmail,
+          error: "Verify your Google email before signing in.",
+        };
       }
       return { ok: true };
     } catch (err) {
@@ -193,20 +226,57 @@ window.TomatoInsightAuth = {
           console.warn("[TomatoInsight] Profile save failed after account creation:", err);
         }
 
-        if (window.TomatoInsightUserData?.whenReady) {
-          Promise.race([
-            window.TomatoInsightUserData.whenReady(),
-            new Promise((resolve) => window.setTimeout(resolve, 8000)),
-          ]).catch((err) => {
-            console.warn("[TomatoInsight] Account data sync wait failed:", err);
-          });
+        try {
+          await sendEmailVerification(credential.user, verificationActionSettings());
+        } catch (err) {
+          console.error("[TomatoInsight] sendEmailVerification", err);
+          await firebaseSignOut(auth);
+          window.TomatoInsightAuthSession?.markSignedOut?.();
+          return {
+            ok: false,
+            error:
+              authErrorMessage(err) ||
+              "Account was created, but the verification email could not be sent. Try signing in to resend it.",
+          };
         }
 
-        return { ok: true, warning: undefined };
+        // Stay signed out of the app until the Gmail address is verified.
+        await firebaseSignOut(auth);
+        window.TomatoInsightAuthSession?.markSignedOut?.();
+
+        return { ok: true, needsVerification: true, email: trimmedEmail };
       }
       return { ok: true };
     } catch (err) {
       console.error("[TomatoInsight] signUp", err);
+      return { ok: false, error: authErrorMessage(err) };
+    }
+  },
+
+  async resendVerificationEmail({ email, password }) {
+    if (!auth) return { ok: false, error: "Firebase is not configured." };
+    const trimmed = String(email || "").trim();
+    if (!isAllowedGmail(trimmed)) return { ok: false, error: gmailOnlyError() };
+    if (!password) return { ok: false, error: "Enter your password to resend the verification email." };
+    try {
+      const credential = await signInWithEmailAndPassword(auth, trimmed, password);
+      if (credential.user?.emailVerified) {
+        await firebaseSignOut(auth);
+        window.TomatoInsightAuthSession?.markSignedOut?.();
+        return { ok: true, alreadyVerified: true, email: trimmed };
+      }
+      await sendEmailVerification(credential.user, verificationActionSettings());
+      await firebaseSignOut(auth);
+      window.TomatoInsightAuthSession?.markSignedOut?.();
+      return { ok: true, email: trimmed };
+    } catch (err) {
+      console.error("[TomatoInsight] resendVerificationEmail", err);
+      try {
+        await firebaseSignOut(auth);
+      } catch {
+        /* ignore */
+      }
+      window.TomatoInsightAuthSession?.markSignedOut?.();
       return { ok: false, error: authErrorMessage(err) };
     }
   },

@@ -1,4 +1,4 @@
-"""Symptom severity assessment (separate from YOLO classification; no OpenCV)."""
+"""OpenCV-based symptom severity assessment (separate from YOLO classification)."""
 
 from .assess import assess_severity
 

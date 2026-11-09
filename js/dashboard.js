@@ -24,7 +24,7 @@
   let tileDrawerCloseTimer = null;
   let activeTileNum = null;
   let activeTileImageDataUrl = null;
-  /** Symptom severity meta (separate from AI confidence). */
+  /** Symptom extent from OpenCV assessment (separate from AI confidence). */
   let activeSeverityPct = null;
   let activeSeverityMeta = null;
   let pendingScanTile = null;

@@ -31,7 +31,7 @@
     if (mode === "history") {
       return { className: "badge badge--watch", label: "Issue" };
     }
-    /* Alert = Severe extent; Watch = Mild/Moderate/Unable to Assess. Never AI confidence. */
+    /* Alert = Severe OpenCV extent; Watch = Mild/Moderate/Unable to Assess. Never AI confidence. */
     const label = String(summary.severityLabel || "").toLowerCase();
     const severityPct = Number.isFinite(Number(summary.severityPct))
       ? Number(summary.severityPct)

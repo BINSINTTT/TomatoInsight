@@ -18,9 +18,10 @@
     <link rel="stylesheet" href="../css/base.css" />
     <link rel="stylesheet" href="../css/auth.css" />
     <script>
-      try {
+        try {
         var authParams = new URLSearchParams(window.location.search);
-        if (authParams.get("signup") === "1") document.documentElement.classList.add("auth-start-signup");
+        if (authParams.get("verify") === "1") document.documentElement.classList.add("auth-start-verify");
+        else if (authParams.get("signup") === "1") document.documentElement.classList.add("auth-start-signup");
         else if (authParams.get("forgot") === "1") document.documentElement.classList.add("auth-start-forgot");
       } catch (e) {}
     </script>
@@ -289,11 +290,6 @@
                     </div>
                   </div>
 
-                  <label class="auth-remember auth-terms">
-                    <input type="checkbox" id="signup-terms" name="terms" required />
-                    <span>I agree to the Terms and Conditions</span>
-                  </label>
-
                   <button type="submit" class="btn auth-signin__submit w-100">Create Account</button>
 
                   <p class="auth-signin__footer">
@@ -301,6 +297,39 @@
                     <a href="login.html" data-auth-panel="login">Sign In</a>
                   </p>
                 </form>
+              </div>
+
+              <div class="auth-panel auth-panel--verify" id="verify-panel" inert>
+                <div class="auth-verify" id="verify-email-panel" role="status" aria-live="polite">
+                  <div class="auth-verify__spinner" aria-hidden="true"></div>
+                  <p class="auth-split-lead mb-2">Check your email</p>
+                  <p class="auth-split-muted mb-3">
+                    We sent a verification link to
+                    <strong id="verify-email-address">your Gmail</strong>.
+                    Open it to confirm this is a real address before you can sign in.
+                  </p>
+                  <p class="auth-form__success" id="verify-form-success" role="status" hidden></p>
+                  <p class="auth-form__error" id="verify-form-error" role="alert" hidden></p>
+
+                  <div class="auth-signin__field" id="verify-password-wrap" hidden>
+                    <label class="form-label auth-split-label" for="verify-password">Password</label>
+                    <input
+                      type="password"
+                      class="form-control auth-split-input"
+                      id="verify-password"
+                      name="verifyPassword"
+                      autocomplete="current-password"
+                      placeholder="Enter your password to resend"
+                    />
+                  </div>
+
+                  <button type="button" class="btn auth-signin__submit w-100" id="verify-resend-btn">
+                    Resend verification email
+                  </button>
+                  <button type="button" class="auth-signin__forgot auth-signin__forgot--center" data-auth-panel="login">
+                    Back to sign in
+                  </button>
+                </div>
               </div>
             </div>
 
