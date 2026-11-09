@@ -342,6 +342,77 @@
   opacity: 0.8;
 }
 
+.gcash-checkout__eyebrow {
+  color: #007dff;
+}
+
+.gcash-checkout__panel {
+  width: min(26rem, 100%);
+}
+
+.gcash-checkout__paybox {
+  margin: 0.85rem 0 1rem;
+  padding: 1.15rem 1rem 1.25rem;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, #e8f3ff 0%, #f7fbff 100%);
+  border: 1px solid #cfe3ff;
+  text-align: center;
+}
+
+.gcash-checkout__secure {
+  margin: 0 0 0.95rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #0b3a75;
+}
+
+.gcash-checkout__open-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 18rem);
+  min-height: 3rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.75rem 1.25rem;
+  background: #007dff;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 22px -10px rgba(0, 125, 255, 0.7);
+}
+
+.gcash-checkout__open-btn:hover {
+  filter: brightness(1.05);
+}
+
+.gcash-checkout__open-btn:focus-visible {
+  outline: 3px solid rgba(0, 125, 255, 0.35);
+  outline-offset: 2px;
+}
+
+.gcash-checkout__or {
+  margin: 0.95rem auto 0.85rem;
+  max-width: 18rem;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: #35557a;
+}
+
+.gcash-checkout__qr {
+  display: block;
+  width: min(100%, 13.75rem);
+  height: auto;
+  margin: 0 auto;
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: 0.5rem;
+  box-shadow: 0 8px 24px -16px rgba(15, 23, 42, 0.45);
+}
+
 @media (min-width: 900px) {
   .credit-plans-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -48,7 +48,8 @@ async function paintPaymentHistory() {
         api.formatPhp?.(row.amountChargedPhp ?? row.amountChargedUsd ?? 0) ||
         api.formatUsd?.(row.amountChargedPhp ?? row.amountChargedUsd ?? 0) ||
         "₱0";
-      meta.textContent = `${charged} demo · ${formatWhen(row.createdAt)}`;
+      const methodLabel = row.method === "gcash" || !row.isDemo ? "GCash" : "demo";
+      meta.textContent = `${charged} ${methodLabel} · ${formatWhen(row.createdAt)}`;
       item.append(title, meta);
       list.appendChild(item);
     });

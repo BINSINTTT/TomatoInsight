@@ -1,5 +1,5 @@
 /**
- * Demo checkout and the top-level Firestore `payments` collection.
+ * GCash checkout and the top-level Firestore `payments` collection.
  *
  *   payments/{paymentId}
  *     uid, email, packId, packName, credits,
@@ -19,7 +19,7 @@ import {
   getDocs,
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
-/** Affordable PHP packs for local farmers (demo checkout still charges ₱0). */
+/** Affordable PHP packs for local farmers — charged via GCash. */
 export const CREDIT_PACKS = {
   starter: { packId: "starter", packName: "Starter", credits: 10, listPricePhp: 49 },
   grower: { packId: "grower", packName: "Grower", credits: 25, listPricePhp: 99 },
@@ -31,6 +31,10 @@ const PACK_BY_CREDITS = {
   25: CREDIT_PACKS.grower,
   50: CREDIT_PACKS.season,
 };
+
+/** Shared GCash QR destination for plan payments. */
+export const GCASH_PAY_URL = "https://qr.gcash.com/281002003111241151621217";
+const GCASH_QR_SRC = new URL("../img/gcash-qr.png", window.location.href).href;
 
 function firestoreDb() {
   if (!window.TOMATO_INSIGHT_FIREBASE_CONFIG?.projectId || !getApps().length) return null;
@@ -78,35 +82,51 @@ function ensureCheckoutModal() {
   if (modal) return modal;
   modal = document.createElement("div");
   modal.id = "demo-checkout-modal";
-  modal.className = "modal demo-checkout";
+  modal.className = "modal demo-checkout gcash-checkout";
   modal.hidden = true;
   modal.setAttribute("role", "dialog");
   modal.setAttribute("aria-modal", "true");
   modal.setAttribute("aria-labelledby", "demo-checkout-title");
   modal.innerHTML = `
     <div class="modal__backdrop" data-close-demo-checkout tabindex="-1" aria-hidden="true"></div>
-    <div class="modal__panel demo-checkout__panel">
+    <div class="modal__panel demo-checkout__panel gcash-checkout__panel">
       <header class="modal__header">
         <div>
-          <p class="demo-checkout__eyebrow">Demo checkout</p>
-          <h2 class="modal__title" id="demo-checkout-title">Pay ₱0 to add credits</h2>
+          <p class="demo-checkout__eyebrow gcash-checkout__eyebrow">GCash payment</p>
+          <h2 class="modal__title" id="demo-checkout-title">Pay for your plan</h2>
         </div>
         <button type="button" class="modal__close" data-close-demo-checkout aria-label="Close">×</button>
       </header>
       <div class="modal__body">
         <p class="demo-checkout__pack" id="demo-checkout-pack"></p>
         <dl class="demo-checkout__summary">
-          <div><dt>Listed price</dt><dd id="demo-checkout-list-price">₱0</dd></div>
-          <div><dt>You pay today</dt><dd id="demo-checkout-pay">₱0</dd></div>
+          <div><dt>Plan</dt><dd id="demo-checkout-plan-name">—</dd></div>
+          <div><dt>Credits</dt><dd id="demo-checkout-credits">—</dd></div>
+          <div><dt>Amount to pay</dt><dd id="demo-checkout-pay">₱0</dd></div>
         </dl>
+
+        <div class="gcash-checkout__paybox">
+          <p class="gcash-checkout__secure">Securely complete the payment with your GCash app</p>
+          <button type="button" class="gcash-checkout__open-btn" id="gcash-open-btn">Open in GCash</button>
+          <p class="gcash-checkout__or">or Log in to GCash and scan this QR with the QR Scanner.</p>
+          <img
+            class="gcash-checkout__qr"
+            id="gcash-qr-image"
+            src="${GCASH_QR_SRC}"
+            alt="GCash payment QR code"
+            width="220"
+            height="220"
+          />
+        </div>
+
         <p class="demo-checkout__note">
-          This is a free demo. No card is charged. A paid row is still saved in Firestore so you can query purchases.
+          Pay the plan amount above in GCash, then confirm here so we can add your credits.
         </p>
         <p class="demo-checkout__error" id="demo-checkout-error" hidden></p>
       </div>
       <footer class="modal__footer">
         <button type="button" class="btn btn--ghost" data-close-demo-checkout>Cancel</button>
-        <button type="button" class="btn btn--primary" id="demo-checkout-pay-btn">Pay ₱0 (demo)</button>
+        <button type="button" class="btn btn--primary" id="demo-checkout-pay-btn">I've paid — add credits</button>
       </footer>
     </div>
   `;
@@ -120,7 +140,8 @@ function ensureCheckoutModal() {
     const open = document.getElementById("demo-checkout-modal");
     if (open && !open.hidden) closeCheckout();
   });
-  modal.querySelector("#demo-checkout-pay-btn")?.addEventListener("click", payDemoCheckout);
+  modal.querySelector("#gcash-open-btn")?.addEventListener("click", openInGCash);
+  modal.querySelector("#demo-checkout-pay-btn")?.addEventListener("click", confirmGCashPayment);
   return modal;
 }
 
@@ -139,26 +160,37 @@ function setCheckoutError(message) {
   el.textContent = message;
 }
 
+function openInGCash() {
+  if (!selectedPack) return;
+  window.open(GCASH_PAY_URL, "_blank", "noopener,noreferrer");
+}
+
 export function openCheckout(packIdOrCredits) {
   const pack = packFor(packIdOrCredits);
   if (!pack) return;
   selectedPack = pack;
   const modal = ensureCheckoutModal();
   const packEl = document.getElementById("demo-checkout-pack");
-  const listEl = document.getElementById("demo-checkout-list-price");
+  const planEl = document.getElementById("demo-checkout-plan-name");
+  const creditsEl = document.getElementById("demo-checkout-credits");
   const payEl = document.getElementById("demo-checkout-pay");
+  const titleEl = document.getElementById("demo-checkout-title");
   if (packEl) packEl.textContent = `${pack.packName} · ${pack.credits} credits`;
-  if (listEl) listEl.textContent = formatPhp(pack.listPricePhp);
-  if (payEl) payEl.textContent = "₱0";
+  if (planEl) planEl.textContent = pack.packName;
+  if (creditsEl) creditsEl.textContent = String(pack.credits);
+  if (payEl) payEl.textContent = formatPhp(pack.listPricePhp);
+  if (titleEl) titleEl.textContent = `Pay ${formatPhp(pack.listPricePhp)} for ${pack.packName}`;
   setCheckoutError("");
   const payBtn = document.getElementById("demo-checkout-pay-btn");
   if (payBtn) {
     payBtn.disabled = false;
-    payBtn.textContent = "Pay ₱0 (demo)";
+    payBtn.textContent = `I've paid ${formatPhp(pack.listPricePhp)} — add credits`;
   }
+  const qr = document.getElementById("gcash-qr-image");
+  if (qr) qr.src = GCASH_QR_SRC;
   modal.hidden = false;
   document.body.classList.add("modal-open");
-  payBtn?.focus();
+  document.getElementById("gcash-open-btn")?.focus();
 }
 
 export function closeCheckout() {
@@ -176,18 +208,16 @@ export function closeCheckout() {
   }
 }
 
-async function payDemoCheckout() {
+async function confirmGCashPayment() {
   if (paying || !selectedPack) return;
   const pack = selectedPack;
   const payBtn = document.getElementById("demo-checkout-pay-btn");
   paying = true;
   if (payBtn) {
     payBtn.disabled = true;
-    payBtn.textContent = "Processing…";
+    payBtn.textContent = "Confirming payment…";
   }
   setCheckoutError("");
-
-  await new Promise((resolve) => window.setTimeout(resolve, 900));
 
   try {
     const addCredits = window.TomatoInsightCredits?.addTopUpCredits;
@@ -196,17 +226,22 @@ async function payDemoCheckout() {
       paying = false;
       if (payBtn) {
         payBtn.disabled = false;
-        payBtn.textContent = "Pay ₱0 (demo)";
+        payBtn.textContent = `I've paid ${formatPhp(pack.listPricePhp)} — add credits`;
       }
       return;
     }
-    const result = await addCredits(pack.credits, pack);
+    const result = await addCredits(pack.credits, {
+      ...pack,
+      amountChargedPhp: pack.listPricePhp,
+      method: "gcash",
+      isDemo: false,
+    });
     if (!result?.ok) {
-      setCheckoutError(result?.error || "Could not complete the demo payment.");
+      setCheckoutError(result?.error || "Could not confirm the GCash payment.");
       paying = false;
       if (payBtn) {
         payBtn.disabled = false;
-        payBtn.textContent = "Pay ₱0 (demo)";
+        payBtn.textContent = `I've paid ${formatPhp(pack.listPricePhp)} — add credits`;
       }
       return;
     }
@@ -218,18 +253,19 @@ async function payDemoCheckout() {
       })
     );
   } catch (err) {
-    console.warn("[TomatoInsight] Demo checkout failed.", err);
+    console.warn("[TomatoInsight] GCash checkout failed.", err);
     setCheckoutError("Could not reach Firestore. Try again.");
     paying = false;
     if (payBtn) {
       payBtn.disabled = false;
-      payBtn.textContent = "Pay ₱0 (demo)";
+      payBtn.textContent = `I've paid ${formatPhp(pack.listPricePhp)} — add credits`;
     }
   }
 }
 
 window.TomatoInsightPayments = {
   CREDIT_PACKS,
+  GCASH_PAY_URL,
   packFor,
   formatPhp,
   formatUsd,

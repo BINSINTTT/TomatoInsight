@@ -729,18 +729,24 @@ export async function addTopUpCredits(amount, pack = {}) {
     };
   }
 
+  const listPricePhp = Number(pack.listPricePhp ?? pack.listPriceUsd) || 0;
+  const amountChargedPhp = Number(
+    pack.amountChargedPhp ?? pack.listPricePhp ?? pack.listPriceUsd ?? 0
+  );
+  const method = String(pack.method || "gcash");
+  const isDemo = pack.isDemo === true;
   const paymentRecord = {
     uid,
     email: authUser?.email || "",
     packId: String(pack.packId || pack.id || "custom"),
     packName: String(pack.packName || pack.name || `${credits} credits`),
     credits,
-    listPricePhp: Number(pack.listPricePhp ?? pack.listPriceUsd) || 0,
-    amountChargedPhp: 0,
+    listPricePhp,
+    amountChargedPhp: Number.isFinite(amountChargedPhp) ? amountChargedPhp : listPricePhp,
     currency: "PHP",
     status: "paid",
-    method: "demo",
-    isDemo: true,
+    method,
+    isDemo,
     createdAt: now.toISOString(),
     createdAtMs: now.getTime(),
     balanceBefore,
