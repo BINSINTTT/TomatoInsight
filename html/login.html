@@ -18,9 +18,19 @@
     <link rel="stylesheet" href="../css/base.css" />
     <link rel="stylesheet" href="../css/auth.css" />
     <script>
-        try {
+      try {
         var authParams = new URLSearchParams(window.location.search);
-        if (authParams.get("verify") === "1") document.documentElement.classList.add("auth-start-verify");
+        var pendingSignup = null;
+        try {
+          pendingSignup = JSON.parse(localStorage.getItem("tomatoInsight.pendingSignup") || "null");
+        } catch (pendingErr) {
+          pendingSignup = null;
+        }
+        var pendingVerify =
+          pendingSignup &&
+          pendingSignup.email &&
+          (pendingSignup.status === "creating" || pendingSignup.status === "awaiting_verification");
+        if (authParams.get("verify") === "1" || pendingVerify) document.documentElement.classList.add("auth-start-verify");
         else if (authParams.get("signup") === "1") document.documentElement.classList.add("auth-start-signup");
         else if (authParams.get("forgot") === "1") document.documentElement.classList.add("auth-start-forgot");
       } catch (e) {}

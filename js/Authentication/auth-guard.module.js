@@ -91,8 +91,9 @@ if (authMode && config?.apiKey) {
       return;
     }
     if (authMode === "guest" && user) {
-      const next =
-        safeAppPath(new URLSearchParams(window.location.search).get("next")) || "/index.html";
+      // Verified users leave auth pages for the farm dashboard (index).
+      const params = new URLSearchParams(window.location.search);
+      const next = safeAppPath(params.get("next")) || "/index.html";
       window.location.replace(next);
     }
   });

@@ -47,6 +47,35 @@
   scroll-margin-top: 5.5rem;
 }
 
+/* Mobile nav: theme starts transparent and only becomes ~85% white after scroll,
+   so Home sits on the header strip while later links show page content through.
+   Keep one solid panel for the whole open menu. */
+@media (max-width: 991.98px) {
+  .landing-page .navbar-hw,
+  .landing-page .navbar-hw.scrolled {
+    background: #ffffff;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 4px 24px -8px rgba(15, 23, 42, 0.1);
+  }
+
+  .landing-page .navbar-hw .navbar-collapse {
+    background: #ffffff;
+    margin-inline: calc(50% - 50vw);
+    padding-inline: calc(50vw - 50%);
+    padding-bottom: 1rem;
+  }
+
+  .landing-page .navbar-hw .navbar-collapse.show,
+  .landing-page .navbar-hw .navbar-collapse.collapsing {
+    border-top: 1px solid #f0f0ee;
+  }
+
+  .landing-page .nav-hw .nav-link {
+    padding-block: 0.7rem !important;
+  }
+}
+
 /* Hero row + scan card sit on one white band (replaces theme .hero gradient). */
 .landing-page .ti-hero-band.section-pad.bg-white {
   padding-top: clamp(5.5rem, 12vh, 6.75rem);

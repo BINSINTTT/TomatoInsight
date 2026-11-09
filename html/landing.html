@@ -22,7 +22,20 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
     <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
     <link rel="stylesheet" href="../vendor/hopewell/theme.css" />
-    <link rel="stylesheet" href="../css/landing.css?v=20251103-responsive" />
+    <link rel="stylesheet" href="../css/landing.css?v=20251110-nav-solid" />
+    <script>
+      /* Unfinished signup/verify must resume on login until Gmail is confirmed. */
+      try {
+        var pending = JSON.parse(localStorage.getItem("tomatoInsight.pendingSignup") || "null");
+        if (
+          pending &&
+          pending.email &&
+          (pending.status === "creating" || pending.status === "awaiting_verification")
+        ) {
+          location.replace("login.html?verify=1");
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body class="landing-page">
     <div id="preloader" aria-hidden="true">

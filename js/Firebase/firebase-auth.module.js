@@ -29,6 +29,7 @@ function gmailOnlyError() {
 }
 
 function verificationActionSettings() {
+  // After the Gmail link is confirmed, land on login so we can open the dashboard.
   return {
     url: new URL("login.html?verified=1", window.location.href).href,
     handleCodeInApp: false,
@@ -261,8 +262,8 @@ window.TomatoInsightAuth = {
     try {
       const credential = await signInWithEmailAndPassword(auth, trimmed, password);
       if (credential.user?.emailVerified) {
-        await firebaseSignOut(auth);
-        window.TomatoInsightAuthSession?.markSignedOut?.();
+        // Keep the session so the guest auth page can open the dashboard.
+        window.TomatoInsightAuthSession?.markSignedIn?.();
         return { ok: true, alreadyVerified: true, email: trimmed };
       }
       await sendEmailVerification(credential.user, verificationActionSettings());
@@ -271,6 +272,37 @@ window.TomatoInsightAuth = {
       return { ok: true, email: trimmed };
     } catch (err) {
       console.error("[TomatoInsight] resendVerificationEmail", err);
+      try {
+        await firebaseSignOut(auth);
+      } catch {
+        /* ignore */
+      }
+      window.TomatoInsightAuthSession?.markSignedOut?.();
+      return { ok: false, error: authErrorMessage(err) };
+    }
+  },
+
+  /**
+   * Sign in and report whether the Gmail address is verified.
+   * If verified, the Firebase session stays active for dashboard entry.
+   */
+  async checkEmailVerified({ email, password }) {
+    if (!auth) return { ok: false, error: "Firebase is not configured." };
+    const trimmed = String(email || "").trim();
+    if (!isAllowedGmail(trimmed)) return { ok: false, error: gmailOnlyError() };
+    if (!password) return { ok: false, error: "Enter your password." };
+    try {
+      const credential = await signInWithEmailAndPassword(auth, trimmed, password);
+      await credential.user?.reload?.();
+      if (credential.user?.emailVerified) {
+        window.TomatoInsightAuthSession?.markSignedIn?.();
+        return { ok: true, verified: true, email: trimmed };
+      }
+      await firebaseSignOut(auth);
+      window.TomatoInsightAuthSession?.markSignedOut?.();
+      return { ok: true, verified: false, email: trimmed };
+    } catch (err) {
+      console.error("[TomatoInsight] checkEmailVerified", err);
       try {
         await firebaseSignOut(auth);
       } catch {

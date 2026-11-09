@@ -77,7 +77,58 @@
       showFormSuccess(successEl, "Your password was updated. Log in with your new password.");
     }
     if (params.get("verified") === "1") {
-      showFormSuccess(successEl, "Email verified. Sign in to open your farm dashboard.");
+      showFormSuccess(successEl, "Email verified. Opening your farm dashboard…");
+      const pendingEmail =
+        form.email.value.trim() ||
+        (() => {
+          try {
+            return sessionStorage.getItem("tomatoInsight.pendingVerifyEmail") || "";
+          } catch {
+            return "";
+          }
+        })();
+      const pendingPassword = readPendingVerifyPassword();
+      if (pendingEmail && pendingPassword && !emailValidationError(pendingEmail)) {
+        form.email.value = pendingEmail;
+        submitBtn.disabled = true;
+        if (googleBtn) googleBtn.disabled = true;
+        (async () => {
+          try {
+            const remember = Boolean(rememberEl?.checked ?? true);
+            writeRememberPreference(remember);
+            await window.TomatoInsightAuth?.setRememberSession?.(remember);
+            const result = await window.TomatoInsightAuth.signInWithEmail({
+              email: pendingEmail,
+              password: pendingPassword,
+            });
+            if (result.ok) {
+              await openDashboardAfterVerified(remember);
+              return;
+            }
+            showFormSuccess(
+              successEl,
+              "Email verified. Sign in below to open your farm dashboard."
+            );
+            if (result.needsVerification) {
+              openVerifyPanel({
+                email: result.email || pendingEmail,
+                password: pendingPassword,
+                message: result.error,
+              });
+            } else if (result.error) {
+              showFormError(errorEl, result.error);
+            }
+          } finally {
+            submitBtn.disabled = false;
+            if (googleBtn) googleBtn.disabled = false;
+          }
+        })();
+      } else {
+        showFormSuccess(
+          successEl,
+          "Email verified. Sign in below to open your farm dashboard."
+        );
+      }
     }
 
     form.addEventListener("submit", async (e) => {
@@ -116,9 +167,15 @@
           return;
         }
         if (result.needsVerification) {
+          writePendingSignup({
+            status: "awaiting_verification",
+            email: result.email || email,
+            password,
+          });
           openVerifyPanel({
             email: result.email || email,
             password,
+            status: "awaiting_verification",
             message: result.error,
           });
           return;
@@ -153,7 +210,11 @@
           return;
         }
         if (result.needsVerification) {
-          openVerifyPanel({ email: result.email || "", message: result.error });
+          openVerifyPanel({
+            email: result.email || "",
+            status: "awaiting_verification",
+            message: result.error,
+          });
           return;
         }
         showFormError(errorEl, result.error || "Google sign-in failed.");
@@ -165,8 +226,190 @@
   }
 
   let pendingVerifyPassword = "";
+  /** Seconds before the user can resend a verification email. */
+  const VERIFY_RESEND_COOLDOWN_SEC = 60;
+  const VERIFY_RESEND_UNTIL_KEY = "tomatoInsight.verifyResendUntil";
+  const VERIFY_PENDING_PASSWORD_KEY = "tomatoInsight.pendingVerifyPassword";
+  /** Survives refresh + leave-to-home until Gmail verification succeeds. */
+  const PENDING_SIGNUP_KEY = "tomatoInsight.pendingSignup";
+  let verifyResendTimer = null;
+  let verifyPollTimer = null;
+  let signupLeaveGuardBound = false;
 
-  function openVerifyPanel({ email, password, message }) {
+  function storePendingVerifyPassword(password) {
+    const value = String(password || "");
+    pendingVerifyPassword = value;
+    try {
+      if (value) sessionStorage.setItem(VERIFY_PENDING_PASSWORD_KEY, value);
+      else sessionStorage.removeItem(VERIFY_PENDING_PASSWORD_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function readPendingVerifyPassword() {
+    if (pendingVerifyPassword) return pendingVerifyPassword;
+    try {
+      const fromSession = sessionStorage.getItem(VERIFY_PENDING_PASSWORD_KEY) || "";
+      if (fromSession) return fromSession;
+    } catch {
+      /* ignore */
+    }
+    return String(readPendingSignup()?.password || "");
+  }
+
+  function readPendingSignup() {
+    try {
+      const raw = localStorage.getItem(PENDING_SIGNUP_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data?.email || !data?.password) return null;
+      if (data.status !== "creating" && data.status !== "awaiting_verification") return null;
+      const ageMs = Date.now() - Number(data.startedAt || 0);
+      if (Number.isFinite(ageMs) && ageMs > 7 * 24 * 60 * 60 * 1000) {
+        clearPendingVerifySecrets();
+        return null;
+      }
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  function writePendingSignup(patch) {
+    const prev = readPendingSignup() || {};
+    const next = {
+      ...prev,
+      ...patch,
+      updatedAt: Date.now(),
+      startedAt: prev.startedAt || Date.now(),
+    };
+    try {
+      localStorage.setItem(PENDING_SIGNUP_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+    if (next.email) {
+      try {
+        sessionStorage.setItem("tomatoInsight.pendingVerifyEmail", next.email);
+      } catch {
+        /* ignore */
+      }
+    }
+    if (next.password) storePendingVerifyPassword(next.password);
+  }
+
+  function clearPendingVerifySecrets() {
+    pendingVerifyPassword = "";
+    try {
+      sessionStorage.removeItem(VERIFY_PENDING_PASSWORD_KEY);
+      sessionStorage.removeItem("tomatoInsight.pendingVerifyEmail");
+      sessionStorage.removeItem(VERIFY_RESEND_UNTIL_KEY);
+      localStorage.removeItem(PENDING_SIGNUP_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function signupLeaveGuard(event) {
+    event.preventDefault();
+    event.returnValue = "";
+  }
+
+  function setSignupLeaveGuard(enabled) {
+    if (enabled && !signupLeaveGuardBound) {
+      window.addEventListener("beforeunload", signupLeaveGuard);
+      signupLeaveGuardBound = true;
+    } else if (!enabled && signupLeaveGuardBound) {
+      window.removeEventListener("beforeunload", signupLeaveGuard);
+      signupLeaveGuardBound = false;
+    }
+  }
+
+  function setSignupLock(visible, message) {
+    let lock = document.getElementById("auth-signup-lock");
+    if (!lock) {
+      lock = document.createElement("div");
+      lock.id = "auth-signup-lock";
+      lock.className = "auth-signup-lock";
+      lock.hidden = true;
+      lock.innerHTML =
+        '<div class="auth-signup-lock__card" role="status" aria-live="polite">' +
+        '<div class="auth-verify__spinner" aria-hidden="true"></div>' +
+        '<p class="auth-signup-lock__title">Setting up your account</p>' +
+        '<p class="auth-signup-lock__text" id="auth-signup-lock-text"></p>' +
+        "</div>";
+      document.body.appendChild(lock);
+    }
+    const textEl = document.getElementById("auth-signup-lock-text");
+    if (textEl && message) textEl.textContent = message;
+    lock.hidden = !visible;
+    document.documentElement.classList.toggle("auth-signup-locked", Boolean(visible));
+  }
+
+  async function openDashboardAfterVerified(remember = true) {
+    setSignupLeaveGuard(false);
+    setSignupLock(false);
+    clearPendingVerifySecrets();
+    writeRememberPreference(remember);
+    await window.TomatoInsightAuth?.setRememberSession?.(remember);
+    window.TomatoInsightAuthSession?.markSignedIn?.(remember);
+    window.location.href = "index.html";
+  }
+
+  function readVerifyResendUntil() {
+    try {
+      const raw = Number(sessionStorage.getItem(VERIFY_RESEND_UNTIL_KEY) || 0);
+      return Number.isFinite(raw) ? raw : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  function writeVerifyResendUntil(untilMs) {
+    try {
+      sessionStorage.setItem(VERIFY_RESEND_UNTIL_KEY, String(untilMs));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function startVerifyResendCooldown(seconds = VERIFY_RESEND_COOLDOWN_SEC) {
+    writeVerifyResendUntil(Date.now() + Math.max(1, Number(seconds) || VERIFY_RESEND_COOLDOWN_SEC) * 1000);
+    syncVerifyResendButton();
+  }
+
+  function syncVerifyResendButton() {
+    const resendBtn = document.getElementById("verify-resend-btn");
+    if (!resendBtn) return;
+    if (verifyResendTimer) {
+      clearInterval(verifyResendTimer);
+      verifyResendTimer = null;
+    }
+
+    const tick = () => {
+      const remainingMs = readVerifyResendUntil() - Date.now();
+      const remainingSec = Math.ceil(remainingMs / 1000);
+      if (remainingSec > 0) {
+        resendBtn.disabled = true;
+        resendBtn.textContent = `Resend in ${remainingSec}s`;
+        return true;
+      }
+      resendBtn.disabled = false;
+      resendBtn.textContent = "Resend verification email";
+      if (verifyResendTimer) {
+        clearInterval(verifyResendTimer);
+        verifyResendTimer = null;
+      }
+      return false;
+    };
+
+    if (tick()) {
+      verifyResendTimer = window.setInterval(tick, 250);
+    }
+  }
+
+  function openVerifyPanel({ email, password, message, startCooldown = true, status = "awaiting_verification" }) {
     const emailEl = document.getElementById("verify-email-address");
     const successEl = document.getElementById("verify-form-success");
     const errorEl = document.getElementById("verify-form-error");
@@ -174,9 +417,16 @@
     const passwordInput = document.getElementById("verify-password");
 
     if (emailEl) emailEl.textContent = email || "your Gmail";
-    pendingVerifyPassword = password || "";
-    if (passwordWrap) passwordWrap.hidden = Boolean(pendingVerifyPassword);
-    if (passwordInput && !pendingVerifyPassword) passwordInput.value = "";
+    storePendingVerifyPassword(password || "");
+    if (email || password) {
+      writePendingSignup({
+        email: email || readPendingSignup()?.email || "",
+        password: password || readPendingVerifyPassword(),
+        status,
+      });
+    }
+    if (passwordWrap) passwordWrap.hidden = Boolean(readPendingVerifyPassword());
+    if (passwordInput && !readPendingVerifyPassword()) passwordInput.value = "";
     showFormError(errorEl, null);
     showFormSuccess(successEl, message || "Account created. Confirm the link in your inbox to finish.");
     if (email) {
@@ -186,8 +436,129 @@
         /* ignore */
       }
     }
+    if (startCooldown) startVerifyResendCooldown();
+    else syncVerifyResendButton();
+    startVerifyStatusPolling();
     window.TomatoInsightAuthUi?.showPanel?.("verify");
     window.requestAnimationFrame(() => window.TomatoInsightAuthUi?.fitStage?.("verify"));
+  }
+
+  async function resumePendingSignup() {
+    const pending = readPendingSignup();
+    if (!pending) return;
+
+    storePendingVerifyPassword(pending.password);
+    try {
+      sessionStorage.setItem("tomatoInsight.pendingVerifyEmail", pending.email);
+    } catch {
+      /* ignore */
+    }
+
+    const creating = pending.status === "creating";
+    openVerifyPanel({
+      email: pending.email,
+      password: pending.password,
+      startCooldown: !creating,
+      status: pending.status,
+      message: creating
+        ? "Finishing account setup… Keep this tab open until verification is ready."
+        : "Waiting for email verification. Open the Gmail link we sent, then this page will continue automatically.",
+    });
+
+    if (!creating) {
+      setSignupLock(false);
+      startVerifyStatusPolling();
+      return;
+    }
+
+    setSignupLeaveGuard(true);
+    setSignupLock(true, "Creating your account… Please wait until verification is ready.");
+    try {
+      const check = await window.TomatoInsightAuth?.checkEmailVerified?.({
+        email: pending.email,
+        password: pending.password,
+      });
+      if (check?.ok && check.verified) {
+        await openDashboardAfterVerified(true);
+        return;
+      }
+      if (check?.ok && !check.verified) {
+        writePendingSignup({ status: "awaiting_verification" });
+        setSignupLeaveGuard(false);
+        const resent = await window.TomatoInsightAuth?.resendVerificationEmail?.({
+          email: pending.email,
+          password: pending.password,
+        });
+        if (resent?.ok && resent.alreadyVerified) {
+          await openDashboardAfterVerified(true);
+          return;
+        }
+        openVerifyPanel({
+          email: pending.email,
+          password: pending.password,
+          status: "awaiting_verification",
+          message:
+            "Account is ready. Check your Gmail and open the verification link — we will open your dashboard when it is confirmed.",
+        });
+        setSignupLock(false);
+        startVerifyStatusPolling();
+        return;
+      }
+
+      // Create never finished (or credentials unavailable) — clear and let them retry.
+      setSignupLeaveGuard(false);
+      setSignupLock(false);
+      clearPendingVerifySecrets();
+      window.TomatoInsightAuthUi?.showPanel?.("signup");
+      showFormError(
+        document.getElementById("signup-form-error"),
+        check?.error || "Account setup was interrupted. Create your account again."
+      );
+    } catch (err) {
+      setSignupLeaveGuard(false);
+      setSignupLock(false);
+      writePendingSignup({ status: "awaiting_verification" });
+      openVerifyPanel({
+        email: pending.email,
+        password: pending.password,
+        status: "awaiting_verification",
+        message:
+          "Still waiting for email verification. Stay on this page or return here after opening the Gmail link.",
+      });
+      startVerifyStatusPolling();
+      console.warn("[TomatoInsight] resumePendingSignup", err);
+    }
+  }
+
+  function stopVerifyStatusPolling() {
+    if (verifyPollTimer) {
+      clearInterval(verifyPollTimer);
+      verifyPollTimer = null;
+    }
+  }
+
+  function startVerifyStatusPolling() {
+    stopVerifyStatusPolling();
+    const poll = async () => {
+      const emailEl = document.getElementById("verify-email-address");
+      const email = String(emailEl?.textContent || "").trim();
+      const password = readPendingVerifyPassword();
+      if (!email || !password || emailValidationError(email)) return;
+      const stage = document.getElementById("auth-panel-stage");
+      if (!stage?.classList.contains("is-verify")) return;
+      const result = await window.TomatoInsightAuth?.checkEmailVerified?.({ email, password });
+      if (result?.ok && result.verified) {
+        stopVerifyStatusPolling();
+        setSignupLock(true, "Email verified. Opening your farm dashboard…");
+        showFormSuccess(
+          document.getElementById("verify-form-success"),
+          "Email verified. Opening your farm dashboard…"
+        );
+        await openDashboardAfterVerified(true);
+      }
+    };
+    verifyPollTimer = window.setInterval(poll, 4000);
+    poll();
   }
 
   function initVerifyPanel() {
@@ -201,7 +572,8 @@
     const passwordWrap = document.getElementById("verify-password-wrap");
 
     const params = new URLSearchParams(window.location.search);
-    if (params.get("verify") === "1") {
+    const pending = readPendingSignup();
+    if (params.get("verify") === "1" && !pending) {
       let email = params.get("email") || "";
       if (!email) {
         try {
@@ -217,11 +589,36 @@
         "Verify your Gmail before signing in. Open the link we sent, or resend it below."
       );
     }
+    syncVerifyResendButton();
+    if (
+      !pending &&
+      (params.get("verify") === "1" ||
+        document.getElementById("auth-panel-stage")?.classList.contains("is-verify"))
+    ) {
+      startVerifyStatusPolling();
+    }
+
+    document.querySelector(".auth-signin__home a[href='landing.html']")?.addEventListener("click", (event) => {
+      if (!readPendingSignup()) return;
+      event.preventDefault();
+      openVerifyPanel({
+        email: readPendingSignup()?.email || String(emailEl?.textContent || ""),
+        password: readPendingVerifyPassword(),
+        status: "awaiting_verification",
+        startCooldown: false,
+        message: "Finish email verification before returning home. Open the Gmail link we sent.",
+      });
+    });
 
     resendBtn.addEventListener("click", async () => {
       showFormError(errorEl, null);
+      if (readVerifyResendUntil() > Date.now()) {
+        syncVerifyResendButton();
+        showFormError(errorEl, "Please wait before requesting another verification email.");
+        return;
+      }
       const email = String(emailEl?.textContent || "").trim();
-      const password = pendingVerifyPassword || String(passwordInput?.value || "");
+      const password = readPendingVerifyPassword() || String(passwordInput?.value || "");
       const emailError = emailValidationError(email);
       if (emailError) {
         showFormError(errorEl, emailError);
@@ -235,25 +632,28 @@
       }
 
       resendBtn.disabled = true;
-      const original = resendBtn.textContent;
       resendBtn.textContent = "Sending…";
       try {
         const result = await window.TomatoInsightAuth.resendVerificationEmail({ email, password });
         if (result.ok && result.alreadyVerified) {
-          showFormSuccess(successEl, "This email is already verified. You can sign in now.");
-          window.TomatoInsightAuthUi?.showPanel?.("login");
+          setSignupLock(true, "Email verified. Opening your farm dashboard…");
+          showFormSuccess(successEl, "Email verified. Opening your farm dashboard…");
+          await openDashboardAfterVerified(true);
           return;
         }
         if (result.ok) {
-          pendingVerifyPassword = password;
+          storePendingVerifyPassword(password);
           if (passwordWrap) passwordWrap.hidden = true;
           showFormSuccess(successEl, "Verification email sent again. Check your inbox and spam folder.");
+          startVerifyResendCooldown();
+          startVerifyStatusPolling();
           return;
         }
         showFormError(errorEl, result.error || "Could not resend verification email.");
-      } finally {
-        resendBtn.disabled = false;
-        resendBtn.textContent = original;
+        syncVerifyResendButton();
+      } catch (err) {
+        showFormError(errorEl, err?.message || "Could not resend verification email.");
+        syncVerifyResendButton();
       }
     });
   }
@@ -335,6 +735,8 @@
       card?.classList.toggle("is-forgot", name === "forgot");
       card?.classList.toggle("is-verify", name === "verify");
       card?.classList.toggle("is-switching", animate);
+      if (name === "verify") startVerifyStatusPolling();
+      else stopVerifyStatusPolling();
       document.documentElement.classList.remove(
         "auth-start-signup",
         "auth-start-forgot",
@@ -393,15 +795,33 @@
       el.addEventListener("click", (event) => {
         event.preventDefault();
         const name = el.getAttribute("data-auth-panel");
-        if (name === "signup" || name === "forgot" || name === "login" || name === "verify") {
-          showPanel(name);
+        if (name !== "signup" && name !== "forgot" && name !== "login" && name !== "verify") return;
+        // Keep unfinished signup on the verify panel until Gmail is confirmed.
+        if (readPendingSignup() && name !== "verify") {
+          showPanel("verify");
+          showFormSuccess(
+            document.getElementById("verify-form-success"),
+            "Finish email verification first. Open the Gmail link we sent, or resend it below."
+          );
+          startVerifyStatusPolling();
+          return;
         }
+        showPanel(name);
       });
     });
 
     const params = new URLSearchParams(window.location.search);
+    let pendingVerify = false;
+    try {
+      const pending = JSON.parse(localStorage.getItem(PENDING_SIGNUP_KEY) || "null");
+      pendingVerify =
+        Boolean(pending?.email) &&
+        (pending.status === "creating" || pending.status === "awaiting_verification");
+    } catch {
+      pendingVerify = false;
+    }
     const initial =
-      params.get("verify") === "1"
+      params.get("verify") === "1" || pendingVerify
         ? "verify"
         : params.get("signup") === "1"
           ? "signup"
@@ -619,6 +1039,16 @@
       submitBtn.disabled = true;
       const originalLabel = submitBtn.textContent;
       submitBtn.textContent = "Creating account…";
+      writePendingSignup({
+        status: "creating",
+        email,
+        password,
+        firstName,
+        middleInitial: middleInitial || "",
+        lastName,
+      });
+      setSignupLeaveGuard(true);
+      setSignupLock(true, "Creating your account… Stay on this page until verification is ready.");
       try {
         const result = await window.TomatoInsightAuth.signUpWithEmail({
           firstName,
@@ -630,23 +1060,64 @@
           displayName: [firstName, middleInitial, lastName].filter(Boolean).join(" "),
         });
         if (result.ok && result.needsVerification) {
+          writePendingSignup({ status: "awaiting_verification", email: result.email || email, password });
+          setSignupLeaveGuard(false);
+          setSignupLock(false);
           openVerifyPanel({
             email: result.email || email,
             password,
+            status: "awaiting_verification",
             message: "Account created. Check your Gmail and open the verification link before signing in.",
           });
           form.reset();
           return;
         }
         if (result.ok) {
+          writePendingSignup({ status: "awaiting_verification", email, password });
+          setSignupLeaveGuard(false);
+          setSignupLock(false);
           openVerifyPanel({
             email,
             password,
+            status: "awaiting_verification",
             message: "Account created. Verify your email before signing in.",
           });
           return;
         }
+        const alreadyRegistered = /already registered|already in use|email-already-in-use/i.test(
+          result.error || ""
+        );
+        if (alreadyRegistered) {
+          writePendingSignup({ status: "awaiting_verification", email, password });
+          setSignupLeaveGuard(false);
+          setSignupLock(false);
+          openVerifyPanel({
+            email,
+            password,
+            status: "awaiting_verification",
+            message:
+              "This Gmail already has an account waiting for verification. Open the link in your inbox, or resend it below.",
+          });
+          window.TomatoInsightAuth?.resendVerificationEmail?.({ email, password }).catch(() => {});
+          return;
+        }
+        setSignupLeaveGuard(false);
+        setSignupLock(false);
+        clearPendingVerifySecrets();
         showFormError(errorEl, result.error || "Sign up failed.");
+      } catch (err) {
+        // Keep pending state so refresh/resume can finish verification if Firebase already created the user.
+        writePendingSignup({ status: "awaiting_verification", email, password });
+        setSignupLeaveGuard(false);
+        setSignupLock(false);
+        openVerifyPanel({
+          email,
+          password,
+          status: "awaiting_verification",
+          message:
+            err?.message ||
+            "Connection interrupted while creating the account. If a verification email arrived, open it — we will keep waiting here.",
+        });
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = originalLabel;
@@ -660,6 +1131,7 @@
     initResetPasswordForm();
     initSignupForm();
     initVerifyPanel();
+    resumePendingSignup();
   }
 
   let authFormsBooted = false;
