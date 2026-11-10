@@ -548,6 +548,31 @@
     }
   }
 
+  async function cancelEmailVerification({ goHome = false } = {}) {
+    if (verifyRedirecting) return;
+    stopVerifyStatusPolling();
+    setSignupLeaveGuard(false);
+    setSignupLock(false);
+    clearPendingVerifySecrets();
+    try {
+      await window.TomatoInsightAuth?.signOut?.();
+    } catch {
+      /* ignore */
+    }
+    window.TomatoInsightAuthSession?.markSignedOut?.();
+    if (goHome) {
+      window.location.href = "landing.html";
+      return;
+    }
+    showFormError(document.getElementById("verify-form-error"), null);
+    showFormSuccess(
+      document.getElementById("login-form-success"),
+      "Verification cancelled. Sign in after you confirm your Gmail, or create a different account."
+    );
+    window.TomatoInsightAuthUi?.showPanel?.("login");
+    window.requestAnimationFrame(() => window.TomatoInsightAuthUi?.fitStage?.("login"));
+  }
+
   function startVerifyStatusPolling() {
     stopVerifyStatusPolling();
     if (verifyRedirecting) return;
@@ -615,16 +640,19 @@
       startVerifyStatusPolling();
     }
 
-    document.querySelector(".auth-signin__home a[href='landing.html']")?.addEventListener("click", (event) => {
-      if (!readPendingSignup()) return;
+    document.getElementById("verify-cancel-btn")?.addEventListener("click", () => {
+      cancelEmailVerification({ goHome: false });
+    });
+    document.getElementById("verify-back-login-btn")?.addEventListener("click", (event) => {
       event.preventDefault();
-      openVerifyPanel({
-        email: readPendingSignup()?.email || String(emailEl?.textContent || ""),
-        password: readPendingVerifyPassword(),
-        status: "awaiting_verification",
-        startCooldown: false,
-        message: "Finish email verification before returning home. Open the Gmail link we sent.",
-      });
+      cancelEmailVerification({ goHome: false });
+    });
+    document.querySelector(".auth-signin__home a[href='landing.html']")?.addEventListener("click", (event) => {
+      if (!readPendingSignup() && !document.getElementById("auth-panel-stage")?.classList.contains("is-verify")) {
+        return;
+      }
+      event.preventDefault();
+      cancelEmailVerification({ goHome: true });
     });
 
     resendBtn.addEventListener("click", async () => {
@@ -813,14 +841,11 @@
         event.preventDefault();
         const name = el.getAttribute("data-auth-panel");
         if (name !== "signup" && name !== "forgot" && name !== "login" && name !== "verify") return;
-        // Keep unfinished signup on the verify panel until Gmail is confirmed.
+        // Leaving verify via Login/Signup cancels the pending verification gate.
         if (readPendingSignup() && name !== "verify") {
-          showPanel("verify");
-          showFormSuccess(
-            document.getElementById("verify-form-success"),
-            "Finish email verification first. Open the Gmail link we sent, or resend it below."
-          );
-          startVerifyStatusPolling();
+          cancelEmailVerification({ goHome: false }).then(() => {
+            if (name === "signup") window.TomatoInsightAuthUi?.showPanel?.("signup");
+          });
           return;
         }
         showPanel(name);

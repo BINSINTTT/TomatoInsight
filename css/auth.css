@@ -1083,6 +1083,23 @@ html.auth-signup-locked {
   margin-top: 0.35rem;
 }
 
+.auth-verify .auth-signin__cancel,
+.btn.auth-signin__cancel {
+  margin-top: 0.65rem;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  color: #3c3c43;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  min-height: 2.85rem;
+}
+
+.auth-verify .auth-signin__cancel:hover,
+.btn.auth-signin__cancel:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
 .auth-verify .auth-signin__forgot--center {
   margin-top: 0.85rem;
 }
