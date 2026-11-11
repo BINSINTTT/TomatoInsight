@@ -224,7 +224,15 @@
     if (confidenceEl) confidenceEl.textContent = highlight.confidenceText;
     if (areaEl) areaEl.textContent = highlight.affectedAreaText;
     if (severityEl) {
-      severityEl.textContent = highlight.severity;
+      const band = highlight.severity;
+      const areaPct = Number(highlight.severityPct);
+      const showArea =
+        band &&
+        band !== "—" &&
+        band !== "Healthy" &&
+        band !== "Unable to Assess" &&
+        Number.isFinite(areaPct);
+      severityEl.textContent = showArea ? `${band} · ${fmtPct(areaPct)}%` : band;
       severityEl.classList.remove(
         "scan-highlight__metric-value--healthy",
         "scan-highlight__metric-value--mild",
@@ -232,7 +240,7 @@
         "scan-highlight__metric-value--severe",
         "scan-highlight__metric-value--unable"
       );
-      const tone = String(highlight.severity || "")
+      const tone = String(band || "")
         .toLowerCase()
         .replace(/\s+/g, "-");
       if (tone === "healthy" || tone === "mild" || tone === "moderate" || tone === "severe") {

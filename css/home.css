@@ -1433,11 +1433,12 @@
 
 .scan-highlight__metric-value {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   font-weight: 700;
   line-height: 1.2;
   color: #2c2c2c;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .scan-highlight__metric-hint {
