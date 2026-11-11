@@ -15,6 +15,16 @@ services:
         sync: false
       - key: ULTRALYTICS_API_KEY
         sync: false
+      - key: ULTRALYTICS_SEVERITY_URL
+        value: https://predict-6af4d8cb3a83009cbe9bd1ba-dproatj77a-de.a.run.app/predict
+      - key: ULTRALYTICS_SEVERITY_API_KEY
+        sync: false
+      - key: ULTRALYTICS_SEVERITY_CONF
+        value: "0.25"
+      - key: ULTRALYTICS_SEVERITY_IOU
+        value: "0.5"
+      - key: ULTRALYTICS_SEVERITY_IMGSZ
+        value: "640"
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_MODEL
