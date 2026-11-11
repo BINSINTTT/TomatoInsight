@@ -400,15 +400,9 @@
     if (!info?.imageDataUrl || !info.scores) return false;
     const label = String(info.severityLabel || "").toLowerCase();
     if (info.severityAssessable && label && label !== "unable to assess") return false;
-    const reason = String(info.severityReason || "").toLowerCase();
-    return ![
-      "leaf_mask_missing",
-      "selected_symptom_mask_missing",
-      "unsupported_disease",
-      "invalid_severity_model_task",
-      "segmentation_area_ratio",
-      "healthy_leaf_segmented",
-    ].includes(reason);
+    const pct = Number(info.severityPct);
+    if (label !== "unable to assess" && Number.isFinite(pct) && pct > 0) return false;
+    return true;
   }
 
   async function fileFromDataUrl(dataUrl) {

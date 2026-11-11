@@ -30,6 +30,22 @@ def _predict_url(raw: str) -> str:
     return url
 
 
+# This deployment was removed. Render still injects it through ULTRALYTICS_SEVERITY_URL,
+# which made every severity request 404 and the scan card stay on "Unable to Assess".
+_RETIRED_SEVERITY_HOSTS = {
+    "predict-6af4d8cb3a83009cbe9bd1ba-dproatj77a-de.a.run.app",
+}
+_LIVE_SEVERITY_URL = "https://predict-6af4e3d49f69f7e908215757-dproatj77a-de.a.run.app"
+
+
+def _severity_predict_url(raw: str) -> str:
+    url = _predict_url(raw)
+    host = url.split("://", 1)[-1].split("/", 1)[0].lower()
+    if not url or host in _RETIRED_SEVERITY_HOSTS:
+        return _predict_url(_LIVE_SEVERITY_URL)
+    return url
+
+
 PORT = int(os.environ.get("VALIDATION_API_PORT", "8765"))
 ULTRALYTICS_PREDICT_URL = _predict_url(os.environ.get("ULTRALYTICS_PREDICT_URL", ""))
 ULTRALYTICS_API_KEY = os.environ.get("ULTRALYTICS_API_KEY", "").strip()
@@ -45,11 +61,8 @@ ULTRALYTICS_VALIDATION_URL = _predict_url(
 ULTRALYTICS_VALIDATION_API_KEY = (
     os.environ.get("ULTRALYTICS_VALIDATION_API_KEY", "").strip() or ULTRALYTICS_API_KEY
 )
-ULTRALYTICS_SEVERITY_URL = _predict_url(
-    os.environ.get(
-        "ULTRALYTICS_SEVERITY_URL",
-        "https://predict-6af4e3d49f69f7e908215757-dproatj77a-de.a.run.app",
-    )
+ULTRALYTICS_SEVERITY_URL = _severity_predict_url(
+    os.environ.get("ULTRALYTICS_SEVERITY_URL", _LIVE_SEVERITY_URL)
 )
 ULTRALYTICS_SEVERITY_API_KEY = (
     os.environ.get("ULTRALYTICS_SEVERITY_API_KEY", "").strip() or ULTRALYTICS_API_KEY

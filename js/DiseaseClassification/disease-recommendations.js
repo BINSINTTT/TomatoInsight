@@ -108,16 +108,24 @@
    * Severity from the separate image assessment only. Never from AI confidence / score share.
    * Provisional bands Mild 1–33 / Moderate 34–66 / Severe 67–100 when a measurable % exists.
    */
+  /**
+   * Band comes from symptom area on the leaf: Mild 1–33, Moderate 34–66, Severe 67–100.
+   * A stored "Unable to Assess" label must not hide a measured percentage.
+   */
   function diseaseSeverityLabel(diseaseName, symptomScorePercent, explicitLabel) {
-    if (explicitLabel) return String(explicitLabel);
-    if (normalizeKey(diseaseName).includes("healthy")) return "Healthy";
-    if (symptomScorePercent == null || !Number.isFinite(Number(symptomScorePercent))) {
-      return "Unable to Assess";
+    const explicit = explicitLabel == null ? "" : String(explicitLabel).trim();
+    const hasArea =
+      symptomScorePercent != null && Number.isFinite(Number(symptomScorePercent));
+    if (normalizeKey(diseaseName).includes("healthy")) {
+      return explicit && explicit.toLowerCase() !== "unable to assess" ? explicit : "Healthy";
     }
-    const pct = Number(symptomScorePercent);
-    if (pct >= 67) return "Severe";
-    if (pct >= 34) return "Moderate";
-    if (pct > 0) return "Mild";
+    if (hasArea) {
+      const pct = Number(symptomScorePercent);
+      if (pct >= 67) return "Severe";
+      if (pct >= 34) return "Moderate";
+      if (pct > 0) return "Mild";
+    }
+    if (explicit && explicit.toLowerCase() !== "unable to assess") return explicit;
     return "Unable to Assess";
   }
 
@@ -149,11 +157,13 @@
     }
     const diseaseName = HIGHLIGHT_NAMES[top?.barKey] || DISPLAY_NAMES[top?.barKey] || top?.barKey || "";
     const label = diseaseSeverityLabel(diseaseName, meta.severityPct, meta.severityLabel);
+    const areaKnown =
+      meta.severityPct != null && Number.isFinite(Number(meta.severityPct)) && Number(meta.severityPct) > 0;
     return {
       severityPct: meta.severityPct,
       severityLabel: label,
-      affectedAreaPct: meta.affectedAreaPct,
-      severityAssessable: Boolean(meta.severityAssessable && label !== "Unable to Assess"),
+      affectedAreaPct: meta.affectedAreaPct ?? (areaKnown ? meta.severityPct : null),
+      severityAssessable: label !== "Unable to Assess" && (Boolean(meta.severityAssessable) || areaKnown),
       severityReason: meta.severityReason || "",
     };
   }
