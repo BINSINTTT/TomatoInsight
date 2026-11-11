@@ -35,7 +35,10 @@ ULTRALYTICS_PREDICT_URL = _predict_url(os.environ.get("ULTRALYTICS_PREDICT_URL",
 ULTRALYTICS_API_KEY = os.environ.get("ULTRALYTICS_API_KEY", "").strip()
 ULTRALYTICS_VALIDATION_URL = _predict_url(
     os.environ.get(
-        "ULTRALYTICS_VALIDATION_URL",
+        # Keep the leaf classifier separate from the disease/severity models.
+        # The old generic URL was accidentally set to a segmentation endpoint
+        # in production, whose `leaf` class is not a TomatoLeaf verdict.
+        "ULTRALYTICS_LEAF_VALIDATION_URL",
         "https://predict-6ae37ce0bbd46ce898ad6e66-dproatj77a-df.a.run.app",
     )
 )
@@ -132,7 +135,7 @@ def validate():
     return _forward_ultralytics(
         ULTRALYTICS_VALIDATION_URL,
         ULTRALYTICS_VALIDATION_API_KEY,
-        "Set ULTRALYTICS_VALIDATION_URL and ULTRALYTICS_VALIDATION_API_KEY in server/.env.",
+        "Set ULTRALYTICS_LEAF_VALIDATION_URL and ULTRALYTICS_VALIDATION_API_KEY in server/.env.",
     )
 
 

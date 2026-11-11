@@ -4,7 +4,7 @@
  */
 window.TomatoInsightValidation = {
   validationProxyUrl: (window.TOMATO_INSIGHT_API_BASE || "http://127.0.0.1:8765").replace(/\/$/, "") + "/validate",
-  minConfidence: 0.8,
+  minConfidence: 0.5,
   /** Block disease scoring unless the top class is a tomato leaf. */
   strictValidation: true,
 };

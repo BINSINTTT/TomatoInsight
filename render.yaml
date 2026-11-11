@@ -7,8 +7,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn -w 1 -b 0.0.0.0:$PORT --timeout 120 validation_api:app
     envVars:
-      - key: ULTRALYTICS_VALIDATION_URL
-        sync: false
+      - key: ULTRALYTICS_LEAF_VALIDATION_URL
+        value: https://predict-6ae37ce0bbd46ce898ad6e66-dproatj77a-df.a.run.app/predict
       - key: ULTRALYTICS_VALIDATION_API_KEY
         sync: false
       - key: ULTRALYTICS_PREDICT_URL
