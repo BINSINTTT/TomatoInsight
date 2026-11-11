@@ -394,6 +394,69 @@
     return ok;
   }
 
+  const severityRetryTiles = new Set();
+
+  function severityNeedsServiceRetry(info) {
+    if (!info?.imageDataUrl || !info.scores) return false;
+    const label = String(info.severityLabel || "").toLowerCase();
+    if (info.severityAssessable && label && label !== "unable to assess") return false;
+    const reason = String(info.severityReason || "").toLowerCase();
+    return ![
+      "leaf_mask_missing",
+      "selected_symptom_mask_missing",
+      "unsupported_disease",
+      "invalid_severity_model_task",
+      "segmentation_area_ratio",
+      "healthy_leaf_segmented",
+    ].includes(reason);
+  }
+
+  async function fileFromDataUrl(dataUrl) {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    const type = blob.type && blob.type.startsWith("image/") ? blob.type : "image/jpeg";
+    const ext = type.includes("png") ? "png" : "jpg";
+    return new File([blob], `leaf.${ext}`, { type });
+  }
+
+  async function retryStoredSeverity(tileNum, info) {
+    const key = String(tileNum);
+    if (severityRetryTiles.has(key) || tileDrafts.has(key) || !severityNeedsServiceRetry(info)) return;
+    const diseaseKey = window.TomatoInsightDisease?.topBarKeyFromScores?.(info.scores);
+    if (!diseaseKey || !window.TomatoInsightDisease?.assessSymptomSeverity) return;
+    severityRetryTiles.add(key);
+    try {
+      const file = await fileFromDataUrl(info.imageDataUrl);
+      const severity = await window.TomatoInsightDisease.assessSymptomSeverity(file, diseaseKey);
+      if (!severity) return;
+      const sameFailure =
+        !severity.severityAssessable &&
+        String(severity.severityReason || "") === String(info.severityReason || "");
+      if (sameFailure) return;
+      const current = window.TilePlantStorage?.get?.(tileNum) || info;
+      if (current.imageDataUrl !== info.imageDataUrl) return;
+      if (String(activeTileNum) === key && !tileDrafts.has(key) && !isScanInFlight(tileNum)) {
+        setClassificationScores(info.scores, "stored", severity);
+      }
+      window.TilePlantStorage?.set?.(tileNum, {
+        ...current,
+        severityPct: severity.severityPct,
+        severityLabel: severity.severityLabel,
+        affectedAreaPct: severity.affectedAreaPct,
+        severityAssessable: Boolean(severity.severityAssessable),
+        severitySource: severity.severitySource || null,
+        severityReason: severity.severityReason || "",
+        diseaseSeverities: severity.diseaseSeverities || {},
+        imageQuality: severity.imageQuality || null,
+        rescanRecommended: Boolean(severity.rescanRecommended),
+        severityModel: severity.severityModel || null,
+      });
+      syncTileGridSummary(tileNum);
+    } catch (err) {
+      console.warn("[TomatoInsight] Stored severity retry failed:", err);
+    }
+  }
+
   function applyPlantInfoToDrawer(info) {
     if (!info) {
       updateTileSaveStatus(null);
@@ -426,6 +489,7 @@
         rescanRecommended: info.rescanRecommended,
         severityModel: info.severityModel,
       });
+      retryStoredSeverity(activeTileNum, info);
     }
 
     updateTileSaveStatus(info.savedAt, info.weekNumber);

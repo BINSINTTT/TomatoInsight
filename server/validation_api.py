@@ -48,7 +48,7 @@ ULTRALYTICS_VALIDATION_API_KEY = (
 ULTRALYTICS_SEVERITY_URL = _predict_url(
     os.environ.get(
         "ULTRALYTICS_SEVERITY_URL",
-        "https://predict-6af4d8cb3a83009cbe9bd1ba-dproatj77a-de.a.run.app",
+        "https://predict-6af4e3d49f69f7e908215757-dproatj77a-de.a.run.app",
     )
 )
 ULTRALYTICS_SEVERITY_API_KEY = (
