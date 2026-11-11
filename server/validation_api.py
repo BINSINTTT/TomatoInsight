@@ -1,5 +1,5 @@
 """
-Local proxy for Ultralytics image validation and disease classification.
+Local proxy for Ultralytics validation, classification, and severity segmentation.
 Run: python validation_api.py
 Then open the site via http://127.0.0.1:8765/.
 """
@@ -15,7 +15,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from groq.recommendations import fetch_care_recommendation, groq_is_configured
-from severity.assess import assess_severity
+from severity.ultralytics_segmentation import assess_with_ultralytics_segmentation
 
 ROOT = Path(__file__).resolve().parent.parent
 HTML_DIR = ROOT / "html"
@@ -42,6 +42,18 @@ ULTRALYTICS_VALIDATION_URL = _predict_url(
 ULTRALYTICS_VALIDATION_API_KEY = (
     os.environ.get("ULTRALYTICS_VALIDATION_API_KEY", "").strip() or ULTRALYTICS_API_KEY
 )
+ULTRALYTICS_SEVERITY_URL = _predict_url(
+    os.environ.get(
+        "ULTRALYTICS_SEVERITY_URL",
+        "https://predict-6af4d8cb3a83009cbe9bd1ba-dproatj77a-de.a.run.app",
+    )
+)
+ULTRALYTICS_SEVERITY_API_KEY = (
+    os.environ.get("ULTRALYTICS_SEVERITY_API_KEY", "").strip() or ULTRALYTICS_API_KEY
+)
+ULTRALYTICS_SEVERITY_CONF = float(os.environ.get("ULTRALYTICS_SEVERITY_CONF", "0.25"))
+ULTRALYTICS_SEVERITY_IOU = float(os.environ.get("ULTRALYTICS_SEVERITY_IOU", "0.5"))
+ULTRALYTICS_SEVERITY_IMGSZ = int(os.environ.get("ULTRALYTICS_SEVERITY_IMGSZ", "640"))
 
 app = Flask(__name__)
 CORS(app)
@@ -56,6 +68,9 @@ def health():
             "validation_url": ULTRALYTICS_VALIDATION_URL,
             "validation_configured": bool(ULTRALYTICS_VALIDATION_URL and ULTRALYTICS_VALIDATION_API_KEY),
             "ultralytics_configured": bool(ULTRALYTICS_PREDICT_URL and ULTRALYTICS_API_KEY),
+            "severity_model": "ultralytics_segmentation",
+            "severity_url": ULTRALYTICS_SEVERITY_URL,
+            "severity_configured": bool(ULTRALYTICS_SEVERITY_URL and ULTRALYTICS_SEVERITY_API_KEY),
             "groq_configured": groq_is_configured(),
         }
     )
@@ -133,8 +148,12 @@ def classify():
 @app.route("/assess-severity", methods=["POST"])
 def assess_severity_route():
     """
-    Separate symptom-extent assessment (OpenCV). Does not use AI confidence.
-    Multipart: file + disease|bar_key (healthy|early_blight|tlcv|spotted_wilt).
+    Measure symptom extent with the trained Ultralytics segmentation model.
+
+    Classification identifies the disease only. Severity is computed from the
+    matching symptom-mask area divided by leaf-mask area. Multipart fields:
+    file + disease|bar_key. Classification confidence is never converted into
+    severity.
     """
     uploaded = request.files.get("file")
     if uploaded is None or uploaded.filename == "":
@@ -150,8 +169,18 @@ def assess_severity_route():
         or request.form.get("barKey")
         or ""
     ).strip()
-    result = assess_severity(image_bytes, disease)
-    status = 200 if result.get("ok") else 400
+
+    result = assess_with_ultralytics_segmentation(
+        image_bytes,
+        uploaded.content_type,
+        disease,
+        ULTRALYTICS_SEVERITY_URL,
+        ULTRALYTICS_SEVERITY_API_KEY,
+        conf=ULTRALYTICS_SEVERITY_CONF,
+        iou=ULTRALYTICS_SEVERITY_IOU,
+        imgsz=ULTRALYTICS_SEVERITY_IMGSZ,
+    )
+    status = 200 if result.get("ok") else 502 if result.get("error") == "upstream" else 500
     return jsonify(result), status
 
 

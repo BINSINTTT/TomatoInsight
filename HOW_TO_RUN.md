@@ -80,7 +80,8 @@ Hard refresh after code changes: **Ctrl+F5**.
 curl http://127.0.0.1:8765/health
 ```
 
-Expect JSON with `"status":"ok"`, `"api_key_configured":true`, and `"ultralytics_configured":true` when `.env` is set correctly.
+Expect JSON with `"status":"ok"`, `"ultralytics_configured":true`, and
+`"severity_configured":true` when `.env` is set correctly.
 
 ---
 
@@ -105,8 +106,22 @@ Then run `.\start.ps1` again.
 | `GET /` | Serves static HTML/CSS/JS |
 | `POST /validate` | Tomato leaf check (Ultralytics proxy) |
 | `POST /classify` | Disease bars (Ultralytics proxy) |
+| `POST /assess-severity` | Per-disease symptom extent from the Ultralytics segmentation model |
+| `POST /recommend` | Disease care recommendations (Groq text model) |
 
 Browser scripts call these URLs to avoid CORS errors.
+
+### Scan and severity flow
+
+1. The leaf validator accepts or rejects the uploaded image.
+2. The disease classifier returns confidence scores. These scores identify possible diseases only.
+3. The same image and top disease name are sent to the trained Ultralytics severity segmentation endpoint.
+4. The server calculates `matching symptom-mask area ÷ leaf-mask area × 100`, then converts it into Healthy, Mild (1–33%), Moderate (34–66%), or Severe (67–100%).
+5. The scan card shows the top disease and its severity. The complete per-disease severity map is kept with the saved scan and used by disease-specific care guides.
+6. OpenCV color rules and Groq Vision are not used for severity. The segmentation response must contain a `leaf` polygon and the selected disease's symptom polygon; otherwise the app reports Unable to Assess rather than inventing a percentage.
+7. If the model cannot detect the required masks, the classification remains visible and the user is asked to retake the image in focus with bright, even lighting.
+
+The segmentation percentage is an AI visual screening estimate, not a laboratory measurement or an expert-validated plant-disease severity score. The deployed endpoint requires internet access; offline mobile inference still requires integrating the exported TFLite model separately.
 
 ---
 

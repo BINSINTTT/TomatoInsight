@@ -1,7 +1,7 @@
 (function () {
   const DEFAULTS = {
     validationProxyUrl: (window.TOMATO_INSIGHT_API_BASE || "http://127.0.0.1:8765").replace(/\/$/, "") + "/validate",
-    minConfidence: 0.5,
+    minConfidence: 0.8,
     /** true: block classification when the model finds no leaf. false: classify anyway and warn. */
     strictValidation: true,
   };
@@ -83,7 +83,7 @@
     if (flaskResult === "tomatoleaf" || flaskResult === "nottomato") {
       const detectedClass = String(payload.detected_class || payload.detectedClass || "").trim() || null;
       const confidence = normalizeConfidence(payload.confidence);
-      const isTomato = flaskResult === "tomatoleaf";
+      const isTomato = flaskResult === "tomatoleaf" && confidence >= config.minConfidence;
       return {
         isTomato,
         confidence,

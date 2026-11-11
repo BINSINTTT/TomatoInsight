@@ -48,6 +48,15 @@
       severityLabel: info.severityLabel != null ? String(info.severityLabel) : null,
       affectedAreaPct: Number.isFinite(affectedAreaPct) ? affectedAreaPct : null,
       severityAssessable: Boolean(info.severityAssessable),
+      severitySource: info.severitySource || null,
+      severityReason: info.severityReason || "",
+      diseaseSeverities:
+        info.diseaseSeverities && typeof info.diseaseSeverities === "object"
+          ? info.diseaseSeverities
+          : {},
+      imageQuality: info.imageQuality && typeof info.imageQuality === "object" ? info.imageQuality : null,
+      rescanRecommended: Boolean(info.rescanRecommended),
+      severityModel: info.severityModel || null,
       imageDataUrl: info.imageDataUrl || null,
     };
   }
@@ -185,6 +194,12 @@
       severityLabel: info.severityLabel != null ? String(info.severityLabel) : null,
       affectedAreaPct: Number.isFinite(affectedAreaPct) ? affectedAreaPct : null,
       severityAssessable: Boolean(info.severityAssessable),
+      severitySource: info.severitySource || null,
+      severityReason: info.severityReason || "",
+      diseaseSeverities:
+        info.diseaseSeverities && typeof info.diseaseSeverities === "object"
+          ? info.diseaseSeverities
+          : {},
     };
 
     if (info.topBarKey && Number(info.topPct) > 0) {

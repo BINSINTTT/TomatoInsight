@@ -24,7 +24,7 @@
   let tileDrawerCloseTimer = null;
   let activeTileNum = null;
   let activeTileImageDataUrl = null;
-  /** Symptom extent from OpenCV assessment (separate from AI confidence). */
+  /** Symptom extent from segmentation masks (separate from AI confidence). */
   let activeSeverityPct = null;
   let activeSeverityMeta = null;
   let pendingScanTile = null;
@@ -357,6 +357,12 @@
       severityAssessable: Boolean(
         activeSeverityMeta?.severityAssessable ?? highlight?.severityAssessable
       ),
+      severitySource: activeSeverityMeta?.severitySource || null,
+      severityReason: activeSeverityMeta?.severityReason || "",
+      diseaseSeverities: activeSeverityMeta?.diseaseSeverities || {},
+      imageQuality: activeSeverityMeta?.imageQuality || null,
+      rescanRecommended: Boolean(activeSeverityMeta?.rescanRecommended),
+      severityModel: activeSeverityMeta?.severityModel || null,
     };
   }
 
@@ -413,6 +419,12 @@
         severityLabel: info.severityLabel,
         affectedAreaPct: info.affectedAreaPct,
         severityAssessable: info.severityAssessable,
+        severitySource: info.severitySource,
+        severityReason: info.severityReason,
+        diseaseSeverities: info.diseaseSeverities,
+        imageQuality: info.imageQuality,
+        rescanRecommended: info.rescanRecommended,
+        severityModel: info.severityModel,
       });
     }
 
@@ -720,6 +732,17 @@
             : null,
         severityAssessable: Boolean(severityMeta.severityAssessable),
         severityReason: severityMeta.severityReason || "",
+        severitySource: severityMeta.severitySource || "",
+        diseaseSeverities:
+          severityMeta.diseaseSeverities && typeof severityMeta.diseaseSeverities === "object"
+            ? severityMeta.diseaseSeverities
+            : {},
+        imageQuality:
+          severityMeta.imageQuality && typeof severityMeta.imageQuality === "object"
+            ? severityMeta.imageQuality
+            : null,
+        rescanRecommended: Boolean(severityMeta.rescanRecommended),
+        severityModel: severityMeta.severityModel || null,
       };
       activeSeverityPct = activeSeverityMeta.severityPct;
     } else if (severityMeta != null && Number.isFinite(Number(severityMeta))) {

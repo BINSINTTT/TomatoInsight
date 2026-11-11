@@ -94,8 +94,31 @@
     return topPct > 0 ? topKey : "";
   }
 
+  function normalizeDiseaseSeverities(raw) {
+    if (!raw || typeof raw !== "object") return {};
+    const normalized = {};
+    Object.entries(raw).forEach(([key, value]) => {
+      if (!value || typeof value !== "object") return;
+      const pctRaw = value.severity_pct ?? value.severityPct ?? value.affected_area_pct;
+      const pct = pctRaw != null && Number.isFinite(Number(pctRaw))
+        ? Math.min(100, Math.max(0, Number(pctRaw)))
+        : null;
+      normalized[key] = {
+        severityPct: pct,
+        severityLabel: String(value.severity || value.severityLabel || "Unable to Assess"),
+        affectedAreaPct: pct,
+        severityAssessable: Boolean(value.measurable) && pct != null,
+        severityReason: String(value.reason || ""),
+        metric: String(value.metric || "visual_symptom_extent"),
+        evidence: Array.isArray(value.evidence) ? value.evidence.map(String) : [],
+      };
+    });
+    return normalized;
+  }
+
   /**
-   * Separate OpenCV symptom assessment. Never uses AI confidence.
+   * Separate image-based symptom assessment. Classification scores identify
+   * disease candidates only; the backend never converts confidence to severity.
    */
   async function assessSymptomSeverity(file, diseaseKey) {
     const unable = {
@@ -103,8 +126,10 @@
       severityLabel: "Unable to Assess",
       affectedAreaPct: null,
       severityAssessable: false,
-      severitySource: "opencv_unavailable",
+      severitySource: "assessment_unavailable",
       severityReason: "request_failed",
+      diseaseSeverities: {},
+      rescanRecommended: false,
     };
 
     const url = String(config.severityProxyUrl || "").trim();
@@ -126,7 +151,7 @@
 
       const label = String(payload.severity || "Unable to Assess");
       const measurable = Boolean(payload.measurable);
-      const areaRaw = payload.affected_area_pct;
+      const areaRaw = payload.severity_pct ?? payload.affected_area_pct;
       const isHealthy = diseaseKey === "healthy" || label === "Healthy";
       const areaPct = isHealthy
         ? areaRaw != null && Number.isFinite(Number(areaRaw))
@@ -141,8 +166,14 @@
         severityLabel: isHealthy ? "Healthy" : label,
         affectedAreaPct: areaPct,
         severityAssessable: isHealthy ? true : measurable && label !== "Unable to Assess",
-        severitySource: "opencv",
+        severitySource: String(payload.source || "unknown"),
         severityReason: String(payload.reason || ""),
+        diseaseSeverities: normalizeDiseaseSeverities(
+          payload.disease_severities || payload.diseaseSeverities
+        ),
+        imageQuality: payload.image_quality || payload.imageQuality || null,
+        rescanRecommended: Boolean(payload.rescan_recommended ?? payload.rescanRecommended),
+        severityModel: payload.model || null,
       };
     } catch (err) {
       console.warn("[TomatoInsight] Severity assessment failed:", err);
@@ -328,6 +359,18 @@
 
       console.log("[TomatoInsight] Bar scores:", scores, "Severity:", severity);
       window.TomatoInsightScan?.setClassificationScores?.(scores, severity);
+      if (!severity.severityAssessable && severity.rescanRecommended) {
+        const qualityIssues = Array.isArray(severity.imageQuality?.issues)
+          ? severity.imageQuality.issues.filter(Boolean).join(", ")
+          : "";
+        window.TomatoInsightValidation?.showNotice?.(
+          "warning",
+          "Please scan the leaf again",
+          `The disease classification completed, but symptom severity could not be measured reliably${
+            qualityIssues ? ` because of: ${qualityIssues}` : " from this image"
+          }. Use bright, even lighting, keep the full leaf in focus, and avoid shadows or glare.`
+        );
+      }
       await new Promise((resolve) => setTimeout(resolve, 480));
       return { ok: true, scores, predictions, ...severity, raw: result };
     } catch (err) {

@@ -72,17 +72,40 @@
       meta.severityAssessable != null
         ? Boolean(meta.severityAssessable)
         : Boolean(label && label !== "Unable to Assess" && severityPct != null);
+    const rawDiseaseSeverities = meta.diseaseSeverities || meta.disease_severities;
+    const diseaseSeverities = {};
+    if (rawDiseaseSeverities && typeof rawDiseaseSeverities === "object") {
+      Object.entries(rawDiseaseSeverities).forEach(([key, entry]) => {
+        if (!entry || typeof entry !== "object") return;
+        const entryAreaRaw = entry.affectedAreaPct ?? entry.affected_area_pct;
+        const entryPctRaw = entry.severityPct ?? entry.severity_pct ?? entryAreaRaw;
+        const entryPct =
+          entryPctRaw != null && Number.isFinite(Number(entryPctRaw))
+            ? Math.min(100, Math.max(0, Number(entryPctRaw)))
+            : null;
+        diseaseSeverities[key] = {
+          severityPct: entryPct,
+          severityLabel: String(entry.severityLabel || entry.severity || "Unable to Assess"),
+          affectedAreaPct: entryPct,
+          severityAssessable: Boolean(entry.severityAssessable ?? entry.measurable) && entryPct != null,
+          severityReason: entry.severityReason || entry.reason || "",
+          metric: entry.metric || "visual_symptom_extent",
+        };
+      });
+    }
     return {
       severityPct,
       severityLabel: label,
       affectedAreaPct: areaPct,
       severityAssessable: assessable,
       severityReason: meta.severityReason || meta.reason || "",
+      severitySource: meta.severitySource || meta.source || "",
+      diseaseSeverities,
     };
   }
 
   /**
-   * Severity from OpenCV assessment only. Never from AI confidence / score share.
+   * Severity from the separate image assessment only. Never from AI confidence / score share.
    * Provisional bands Mild 1–33 / Moderate 34–66 / Severe 67–100 when a measurable % exists.
    */
   function diseaseSeverityLabel(diseaseName, symptomScorePercent, explicitLabel) {
@@ -99,7 +122,9 @@
   }
 
   function resolveSeverityMeta(scores, severityInput, top) {
-    const meta = normalizeSeverityMeta(severityInput) || lastSeverityMeta;
+    const baseMeta = normalizeSeverityMeta(severityInput) || lastSeverityMeta;
+    const diseaseMeta = top?.barKey ? baseMeta?.diseaseSeverities?.[top.barKey] : null;
+    const meta = diseaseMeta ? { ...baseMeta, ...diseaseMeta } : baseMeta;
     if (top?.barKey === "healthy") {
       const area =
         meta?.affectedAreaPct != null && Number.isFinite(Number(meta.affectedAreaPct))
@@ -380,19 +405,20 @@
   }
 
   function guidesForScores(scores, severityInput) {
-    const top = findTopDisease(scores);
-    const resolved = resolveSeverityMeta(scores, severityInput, top);
-    return findDetectedMatches(scores).map(({ barKey, pct }) => ({
-      ...treatmentForBarKey(
+    return findDetectedMatches(scores).map(({ barKey, pct }) => {
+      const resolved = resolveSeverityMeta(scores, severityInput, { barKey, pct });
+      return {
+        ...treatmentForBarKey(
+          barKey,
+          pct,
+          barKey === "healthy"
+            ? { ...resolved, severityLabel: resolved.severityLabel || "Healthy" }
+            : resolved
+        ),
         barKey,
         pct,
-        barKey === "healthy"
-          ? { ...resolved, severityLabel: resolved.severityLabel || "Healthy" }
-          : resolved
-      ),
-      barKey,
-      pct,
-    }));
+      };
+    });
   }
 
   function isHealthyGuide(guide) {
@@ -404,8 +430,8 @@
   function mergeGuidesWithTopOverride(scores, topGuide, severityInput) {
     const detected = findDetectedMatches(scores);
     if (!detected.length) return [];
-    const resolved = resolveSeverityMeta(scores, severityInput, detected[0]);
     return detected.map((match, index) => {
+      const resolved = resolveSeverityMeta(scores, severityInput, match);
       const builtIn = {
         ...treatmentForBarKey(
           match.barKey,

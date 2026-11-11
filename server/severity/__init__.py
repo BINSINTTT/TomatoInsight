@@ -1,5 +1,8 @@
-"""OpenCV-based symptom severity assessment (separate from YOLO classification)."""
+"""Tomato symptom severity assessment, separate from disease classification."""
 
-from .assess import assess_severity
+from .ultralytics_segmentation import (
+    assess_with_ultralytics_segmentation,
+    severity_from_segmentation,
+)
 
-__all__ = ["assess_severity"]
+__all__ = ["assess_with_ultralytics_segmentation", "severity_from_segmentation"]
