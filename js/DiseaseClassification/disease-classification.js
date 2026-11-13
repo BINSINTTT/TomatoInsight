@@ -3,6 +3,8 @@
     classifyProxyUrl: (window.TOMATO_INSIGHT_API_BASE || "http://127.0.0.1:8765").replace(/\/$/, "") + "/classify",
     severityProxyUrl:
       (window.TOMATO_INSIGHT_API_BASE || "http://127.0.0.1:8765").replace(/\/$/, "") + "/assess-severity",
+    specialistProxyUrl:
+      (window.TOMATO_INSIGHT_API_BASE || "http://127.0.0.1:8765").replace(/\/$/, "") + "/refine-disease",
     predictUrl: "https://predict-6ae38ddbc663e1b4d2a97fd5-dproatj77a-de.a.run.app/predict",
     apiKey: "",
     /** null = use the deployment defaults, so results match the Ultralytics Predict page. */
@@ -181,6 +183,45 @@
     }
   }
 
+  /** Refine only the Early Blight/Spotted Wilt pair with the fourth model. */
+  async function refineDiseaseScores(file, mainScores) {
+    const original = { ...mainScores };
+    const leading = topBarKeyFromScores(original);
+    if (!file || !["early_blight", "spotted_wilt"].includes(leading)) {
+      return { scores: original, applied: false, reason: "specialist_not_needed" };
+    }
+    const url = String(config.specialistProxyUrl || "").trim();
+    if (!url) return { scores: original, applied: false, reason: "specialist_proxy_not_configured" };
+
+    try {
+      const form = new FormData();
+      form.append("file", file, file.name || "upload.jpg");
+      form.append("main_scores", JSON.stringify(original));
+      const response = await fetch(url, { method: "POST", body: form });
+      const payload = await readJsonResponse(response);
+      if (!response.ok || !payload?.ok || !payload?.scores) {
+        console.warn("[TomatoInsight] Specialist refinement unavailable:", payload);
+        return { scores: original, applied: false, reason: payload?.reason || `http_${response.status}` };
+      }
+      const refined = { ...original };
+      ["healthy", "tlcv", "early_blight", "spotted_wilt"].forEach((key) => {
+        const value = Number(payload.scores[key]);
+        if (Number.isFinite(value)) refined[key] = Math.min(100, Math.max(0, value));
+      });
+      return {
+        scores: refined,
+        applied: Boolean(payload.applied),
+        reason: String(payload.reason || ""),
+        finalDisease: payload.final_disease || topBarKeyFromScores(refined),
+        evidence: payload.evidence || null,
+        model: payload.model || null,
+      };
+    } catch (err) {
+      console.warn("[TomatoInsight] Specialist refinement failed:", err);
+      return { scores: original, applied: false, reason: "network" };
+    }
+  }
+
   function mapToBarScores(predictions) {
     const byKey = new Map();
     predictions.forEach((item) => {
@@ -340,7 +381,7 @@
         return { ok: false, error: "empty_predictions", raw: result };
       }
 
-      const scores = mapToBarScores(predictions);
+      let scores = mapToBarScores(predictions);
       const totalScore = Object.values(scores).reduce((sum, value) => sum + (Number(value) || 0), 0);
       if (totalScore <= 0) {
         showClassificationMessage(
@@ -353,11 +394,15 @@
 
       if (!stillCurrent()) return { ok: false, cancelled: true };
 
+      const specialist = await refineDiseaseScores(file, scores);
+      scores = specialist.scores;
+      if (!stillCurrent()) return { ok: false, cancelled: true };
+
       const diseaseKey = topBarKeyFromScores(scores);
       const severity = await assessSymptomSeverity(file, diseaseKey);
       if (!stillCurrent()) return { ok: false, cancelled: true };
 
-      console.log("[TomatoInsight] Bar scores:", scores, "Severity:", severity);
+      console.log("[TomatoInsight] Bar scores:", scores, "Specialist:", specialist, "Severity:", severity);
       window.TomatoInsightScan?.setClassificationScores?.(scores, severity);
       if (!severity.severityAssessable && severity.rescanRecommended) {
         const qualityIssues = Array.isArray(severity.imageQuality?.issues)
@@ -372,7 +417,7 @@
         );
       }
       await new Promise((resolve) => setTimeout(resolve, 480));
-      return { ok: true, scores, predictions, ...severity, raw: result };
+      return { ok: true, scores, predictions, specialistRefinement: specialist, ...severity, raw: result };
     } catch (err) {
       console.error("[TomatoInsight] Disease classification error:", err);
       const msg = String(err?.message || "");
@@ -393,6 +438,7 @@
     mapToBarScores,
     extractPredictions,
     assessSymptomSeverity,
+    refineDiseaseScores,
     topBarKeyFromScores,
   };
 })();

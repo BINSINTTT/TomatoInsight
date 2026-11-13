@@ -25,6 +25,22 @@ services:
         value: "0.5"
       - key: ULTRALYTICS_SEVERITY_IMGSZ
         value: "640"
+      - key: ULTRALYTICS_SPECIALIST_URL
+        sync: false
+      - key: ULTRALYTICS_SPECIALIST_API_KEY
+        sync: false
+      - key: ULTRALYTICS_SPECIALIST_CONF
+        value: "0.25"
+      - key: ULTRALYTICS_SPECIALIST_IOU
+        value: "0.5"
+      - key: ULTRALYTICS_SPECIALIST_IMGSZ
+        value: "640"
+      - key: ULTRALYTICS_SPECIALIST_WEIGHT
+        value: "0.65"
+      - key: ULTRALYTICS_SPECIALIST_MIN_CONFIDENCE
+        value: "0.5"
+      - key: ULTRALYTICS_SPECIALIST_MIN_MARGIN
+        value: "0.1"
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_MODEL

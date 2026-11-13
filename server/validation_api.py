@@ -7,6 +7,7 @@ Then open the site via http://127.0.0.1:8765/.
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 
 import requests
@@ -16,6 +17,7 @@ from flask_cors import CORS
 
 from groq.recommendations import fetch_care_recommendation, groq_is_configured
 from severity.ultralytics_segmentation import assess_with_ultralytics_segmentation
+from specialist.ultralytics_segmentation import refine_with_ultralytics_segmentation
 
 ROOT = Path(__file__).resolve().parent.parent
 HTML_DIR = ROOT / "html"
@@ -70,6 +72,20 @@ ULTRALYTICS_SEVERITY_API_KEY = (
 ULTRALYTICS_SEVERITY_CONF = float(os.environ.get("ULTRALYTICS_SEVERITY_CONF", "0.25"))
 ULTRALYTICS_SEVERITY_IOU = float(os.environ.get("ULTRALYTICS_SEVERITY_IOU", "0.5"))
 ULTRALYTICS_SEVERITY_IMGSZ = int(os.environ.get("ULTRALYTICS_SEVERITY_IMGSZ", "640"))
+ULTRALYTICS_SPECIALIST_URL = _predict_url(os.environ.get("ULTRALYTICS_SPECIALIST_URL", ""))
+ULTRALYTICS_SPECIALIST_API_KEY = (
+    os.environ.get("ULTRALYTICS_SPECIALIST_API_KEY", "").strip() or ULTRALYTICS_API_KEY
+)
+ULTRALYTICS_SPECIALIST_CONF = float(os.environ.get("ULTRALYTICS_SPECIALIST_CONF", "0.25"))
+ULTRALYTICS_SPECIALIST_IOU = float(os.environ.get("ULTRALYTICS_SPECIALIST_IOU", "0.5"))
+ULTRALYTICS_SPECIALIST_IMGSZ = int(os.environ.get("ULTRALYTICS_SPECIALIST_IMGSZ", "640"))
+ULTRALYTICS_SPECIALIST_WEIGHT = float(os.environ.get("ULTRALYTICS_SPECIALIST_WEIGHT", "0.65"))
+ULTRALYTICS_SPECIALIST_MIN_CONFIDENCE = float(
+    os.environ.get("ULTRALYTICS_SPECIALIST_MIN_CONFIDENCE", "0.5")
+)
+ULTRALYTICS_SPECIALIST_MIN_MARGIN = float(
+    os.environ.get("ULTRALYTICS_SPECIALIST_MIN_MARGIN", "0.1")
+)
 
 app = Flask(__name__)
 CORS(app)
@@ -87,6 +103,11 @@ def health():
             "severity_model": "ultralytics_segmentation",
             "severity_url": ULTRALYTICS_SEVERITY_URL,
             "severity_configured": bool(ULTRALYTICS_SEVERITY_URL and ULTRALYTICS_SEVERITY_API_KEY),
+            "specialist_model": "early_blight_spotted_wilt_segmentation",
+            "specialist_url": ULTRALYTICS_SPECIALIST_URL,
+            "specialist_configured": bool(
+                ULTRALYTICS_SPECIALIST_URL and ULTRALYTICS_SPECIALIST_API_KEY
+            ),
             "groq_configured": groq_is_configured(),
         }
     )
@@ -200,6 +221,40 @@ def assess_severity_route():
     return jsonify(result), status
 
 
+@app.route("/refine-disease", methods=["POST"])
+def refine_disease_route():
+    """Use the fourth segmentation model to refine Early Blight vs Spotted Wilt."""
+    uploaded = request.files.get("file")
+    if uploaded is None or uploaded.filename == "":
+        return jsonify({"error": "missing_file", "message": "Send multipart field named file."}), 400
+    image_bytes = uploaded.read()
+    if not image_bytes:
+        return jsonify({"error": "empty_file", "message": "Uploaded file is empty."}), 400
+
+    raw_scores = request.form.get("main_scores", request.form.get("scores", "{}"))
+    try:
+        main_scores = json.loads(raw_scores)
+    except (TypeError, json.JSONDecodeError):
+        main_scores = None
+    if not isinstance(main_scores, dict):
+        return jsonify({"error": "invalid_scores", "message": "main_scores must be a JSON object."}), 400
+
+    result = refine_with_ultralytics_segmentation(
+        image_bytes,
+        uploaded.content_type,
+        main_scores,
+        ULTRALYTICS_SPECIALIST_URL,
+        ULTRALYTICS_SPECIALIST_API_KEY,
+        conf=ULTRALYTICS_SPECIALIST_CONF,
+        iou=ULTRALYTICS_SPECIALIST_IOU,
+        imgsz=ULTRALYTICS_SPECIALIST_IMGSZ,
+        specialist_weight=ULTRALYTICS_SPECIALIST_WEIGHT,
+        minimum_confidence=ULTRALYTICS_SPECIALIST_MIN_CONFIDENCE,
+        minimum_margin=ULTRALYTICS_SPECIALIST_MIN_MARGIN,
+    )
+    return jsonify(result)
+
+
 @app.route("/recommend", methods=["POST"])
 def recommend():
     body = request.get_json(silent=True) or {}
@@ -264,7 +319,7 @@ def site_root():
 @app.route("/<path:path>", methods=["GET"])
 def static_files(path: str):
     if path.startswith(
-        ("validate", "classify", "recommend", "health", "assess-severity")
+        ("validate", "classify", "refine-disease", "recommend", "health", "assess-severity")
     ):
         return jsonify({"error": "not_found"}), 404
 
