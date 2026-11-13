@@ -22,7 +22,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
     <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
     <link rel="stylesheet" href="../vendor/hopewell/theme.css" />
-    <link rel="stylesheet" href="../css/landing.css?v=20251110-nav-solid" />
+    <link rel="stylesheet" href="../css/landing.css?v=20261114-skeleton" />
     <script>
       /* Unfinished signup/verify must resume on login until Gmail is confirmed. */
       try {
@@ -37,10 +37,61 @@
       } catch (e) {}
     </script>
   </head>
-  <body class="landing-page">
-    <div id="preloader" aria-hidden="true">
-      <div class="preload-ring"><i class="bi bi-flower1 preload-heart"></i></div>
-      <div class="preload-text">TOMATO INSIGHT</div>
+  <body class="landing-page landing-is-loading">
+    <div id="preloader" class="landing-skeleton" aria-hidden="true">
+      <div class="landing-skeleton__nav">
+        <div class="landing-skeleton__container landing-skeleton__nav-inner">
+          <div class="landing-skeleton__brand">
+            <span class="landing-skeleton__logo skeleton-block"></span>
+            <span class="landing-skeleton__brand-name skeleton-block"></span>
+          </div>
+          <div class="landing-skeleton__links" aria-hidden="true">
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+          </div>
+          <div class="landing-skeleton__nav-actions">
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+          </div>
+          <span class="landing-skeleton__menu skeleton-block"></span>
+        </div>
+      </div>
+
+      <div class="landing-skeleton__container landing-skeleton__hero">
+        <div class="landing-skeleton__copy">
+          <span class="landing-skeleton__eyebrow skeleton-block"></span>
+          <div class="landing-skeleton__title">
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+          </div>
+          <div class="landing-skeleton__paragraph">
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+          </div>
+          <div class="landing-skeleton__buttons">
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+          </div>
+          <div class="landing-skeleton__chips">
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+          </div>
+        </div>
+
+        <div class="landing-skeleton__visual" aria-hidden="true">
+          <div class="landing-skeleton__card skeleton-block"></div>
+          <div class="landing-skeleton__dots">
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+            <span class="skeleton-block"></span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ============ NAVBAR ============ -->
@@ -589,6 +640,6 @@
 
     <script src="../vendor/bootstrap/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    <script src="../js/landing.js"></script>
+    <script src="../js/landing.js?v=20261114-skeleton"></script>
   </body>
 </html>

@@ -19,8 +19,20 @@
     const preloader = document.getElementById("preloader");
     if (!preloader) return;
 
-    const hide = () => preloader.classList.add("hide");
-    window.addEventListener("load", () => setTimeout(hide, 300), { once: true });
+    let hidden = false;
+    const hide = () => {
+      if (hidden) return;
+      hidden = true;
+      preloader.classList.add("hide");
+      document.body.classList.remove("landing-is-loading");
+      window.setTimeout(() => preloader.remove(), 320);
+    };
+
+    if (document.readyState === "complete") {
+      window.requestAnimationFrame(hide);
+    } else {
+      window.addEventListener("load", hide, { once: true });
+    }
     // Fallback for a slow or already-fired load event.
     setTimeout(hide, 2500);
   }

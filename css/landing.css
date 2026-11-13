@@ -37,6 +37,302 @@
   overflow-x: hidden;
 }
 
+/* Initial page skeleton. It mirrors the navbar and first hero viewport so the
+   page feels stable while fonts, theme styles, and hero photography finish. */
+.landing-page.landing-is-loading {
+  overflow: hidden;
+}
+
+.landing-page #preloader.landing-skeleton {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: block;
+  overflow: hidden;
+  background: #ffffff;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.24s ease, visibility 0.24s ease;
+}
+
+.landing-page #preloader.landing-skeleton.hide {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.landing-skeleton__container {
+  width: min(100% - 3rem, 1320px);
+  margin-inline: auto;
+}
+
+.landing-skeleton__nav {
+  height: 5rem;
+  border-bottom: 1px solid #eef0ec;
+  background: #ffffff;
+}
+
+.landing-skeleton__nav-inner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.landing-skeleton__brand,
+.landing-skeleton__links,
+.landing-skeleton__nav-actions,
+.landing-skeleton__buttons,
+.landing-skeleton__chips,
+.landing-skeleton__dots {
+  display: flex;
+  align-items: center;
+}
+
+.landing-skeleton__brand {
+  gap: 0.65rem;
+}
+
+.landing-skeleton__logo {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.7rem;
+}
+
+.landing-skeleton__brand-name {
+  width: 8.6rem;
+  height: 1.3rem;
+  border-radius: 0.4rem;
+}
+
+.landing-skeleton__links {
+  gap: 2rem;
+}
+
+.landing-skeleton__links .skeleton-block {
+  width: 4.6rem;
+  height: 0.8rem;
+  border-radius: 999px;
+}
+
+.landing-skeleton__links .skeleton-block:nth-child(2) {
+  width: 6rem;
+}
+
+.landing-skeleton__nav-actions,
+.landing-skeleton__buttons,
+.landing-skeleton__chips {
+  gap: 0.75rem;
+}
+
+.landing-skeleton__nav-actions .skeleton-block {
+  width: 5.25rem;
+  height: 2.55rem;
+  border-radius: 999px;
+}
+
+.landing-skeleton__nav-actions .skeleton-block:last-child {
+  width: 9.25rem;
+}
+
+.landing-skeleton__menu {
+  display: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.65rem;
+}
+
+.landing-skeleton__hero {
+  min-height: calc(100vh - 5rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(20rem, 0.9fr);
+  align-items: center;
+  gap: clamp(3rem, 7vw, 7rem);
+  padding-block: clamp(2.5rem, 7vh, 5.5rem);
+}
+
+.landing-skeleton__copy {
+  width: 100%;
+}
+
+.landing-skeleton__eyebrow {
+  display: block;
+  width: 17.5rem;
+  max-width: 72%;
+  height: 2rem;
+  margin-bottom: 1.5rem;
+  border-radius: 999px;
+}
+
+.landing-skeleton__title,
+.landing-skeleton__paragraph {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.landing-skeleton__title .skeleton-block {
+  height: clamp(2.2rem, 4vw, 3.5rem);
+  border-radius: 0.65rem;
+}
+
+.landing-skeleton__title .skeleton-block:nth-child(2) {
+  width: 93%;
+}
+
+.landing-skeleton__title .skeleton-block:nth-child(3) {
+  width: 62%;
+}
+
+.landing-skeleton__paragraph {
+  margin-top: 1.65rem;
+  gap: 0.55rem;
+}
+
+.landing-skeleton__paragraph .skeleton-block {
+  width: 96%;
+  height: 1rem;
+  border-radius: 999px;
+}
+
+.landing-skeleton__paragraph .skeleton-block:nth-child(2) {
+  width: 88%;
+}
+
+.landing-skeleton__paragraph .skeleton-block:nth-child(3) {
+  width: 68%;
+}
+
+.landing-skeleton__buttons {
+  margin-top: 1.75rem;
+}
+
+.landing-skeleton__buttons .skeleton-block {
+  width: 10.5rem;
+  height: 3.1rem;
+  border-radius: 999px;
+}
+
+.landing-skeleton__buttons .skeleton-block:last-child {
+  width: 7.25rem;
+}
+
+.landing-skeleton__chips {
+  margin-top: 1rem;
+}
+
+.landing-skeleton__chips .skeleton-block {
+  width: 11.75rem;
+  height: 2.35rem;
+  border-radius: 999px;
+}
+
+.landing-skeleton__chips .skeleton-block:last-child {
+  width: 10.5rem;
+}
+
+.landing-skeleton__visual {
+  width: min(100%, 31rem);
+  justify-self: center;
+}
+
+.landing-skeleton__card {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 1.35rem;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.07);
+}
+
+.landing-skeleton__dots {
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 1rem;
+}
+
+.landing-skeleton__dots .skeleton-block {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+}
+
+.skeleton-block {
+  position: relative;
+  overflow: hidden;
+  background: #e7eae5;
+}
+
+.skeleton-block::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.68), transparent);
+  animation: landing-skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes landing-skeleton-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (max-width: 991.98px) {
+  .landing-skeleton__links,
+  .landing-skeleton__nav-actions {
+    display: none;
+  }
+
+  .landing-skeleton__menu {
+    display: block;
+  }
+
+  .landing-skeleton__hero {
+    grid-template-columns: 1fr 0.82fr;
+    gap: 2.5rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .landing-skeleton__container {
+    width: min(100% - 2rem, 540px);
+  }
+
+  .landing-skeleton__nav {
+    height: 4.75rem;
+  }
+
+  .landing-skeleton__brand-name {
+    width: 7.5rem;
+  }
+
+  .landing-skeleton__hero {
+    min-height: calc(100vh - 4.75rem);
+    grid-template-columns: 1fr;
+    align-content: start;
+    gap: 2.25rem;
+    padding-block: 2.5rem;
+  }
+
+  .landing-skeleton__title .skeleton-block {
+    height: clamp(2rem, 9vw, 2.75rem);
+  }
+
+  .landing-skeleton__visual {
+    width: min(82%, 22rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-page #preloader.landing-skeleton {
+    transition-duration: 0.01ms;
+  }
+
+  .skeleton-block::after {
+    animation: none;
+    display: none;
+  }
+}
+
 @media (max-width: 767.98px) {
   .landing-page .stats-band .stat-item {
     padding: 28px 14px;
