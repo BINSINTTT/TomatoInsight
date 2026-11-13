@@ -343,6 +343,17 @@
   scroll-margin-top: 5.5rem;
 }
 
+/* Keep the existing tomato-red nav line visible for the section in view. */
+.landing-page .nav-hw .nav-link.active::after,
+.landing-page .nav-hw .nav-link[aria-current="location"]::after {
+  transform: scaleX(1);
+}
+
+.landing-page .nav-hw .nav-link.active,
+.landing-page .nav-hw .nav-link[aria-current="location"] {
+  color: var(--clr-text);
+}
+
 /* Mobile nav: theme starts transparent and only becomes ~85% white after scroll,
    so Home sits on the header strip while later links show page content through.
    Keep one solid panel for the whole open menu. */
@@ -368,6 +379,7 @@
   }
 
   .landing-page .nav-hw .nav-link {
+    width: fit-content;
     padding-block: 0.7rem !important;
   }
 }

@@ -41,6 +41,12 @@
     const nav = document.getElementById("mainNav");
     const scrollTopBtn = document.getElementById("scrollTop");
     const ring = scrollTopBtn && scrollTopBtn.querySelector(".progress");
+    const sectionLinks = nav
+      ? Array.from(nav.querySelectorAll('.nav-link[href^="#"]')).map((link) => ({
+          link,
+          section: document.getElementById(link.getAttribute("href").slice(1)),
+        })).filter((item) => item.section)
+      : [];
 
     if (ring) {
       const circumference = 2 * Math.PI * 23;
@@ -74,9 +80,50 @@
     }
 
     if (nav) {
-      const setNavState = () => nav.classList.toggle("scrolled", window.scrollY > 40);
-      window.addEventListener("scroll", setNavState, { passive: true });
-      setNavState();
+      let navUpdateQueued = false;
+
+      const setActiveSection = (activeId) => {
+        sectionLinks.forEach(({ link, section }) => {
+          const isActive = section.id === activeId;
+          link.classList.toggle("active", isActive);
+          if (isActive) link.setAttribute("aria-current", "location");
+          else link.removeAttribute("aria-current");
+        });
+      };
+
+      const updateNavbar = () => {
+        navUpdateQueued = false;
+        nav.classList.toggle("scrolled", window.scrollY > 40);
+        if (!sectionLinks.length) return;
+
+        const pageBottom = window.scrollY + window.innerHeight;
+        const documentBottom = document.documentElement.scrollHeight;
+        let activeSection = sectionLinks[0].section;
+
+        if (pageBottom >= documentBottom - 4) {
+          activeSection = sectionLinks[sectionLinks.length - 1].section;
+        } else {
+          const marker = window.scrollY + nav.offsetHeight + Math.min(window.innerHeight * 0.2, 160);
+          sectionLinks.forEach(({ section }) => {
+            if (section.offsetTop <= marker) activeSection = section;
+          });
+        }
+
+        setActiveSection(activeSection.id);
+      };
+
+      const queueNavbarUpdate = () => {
+        if (navUpdateQueued) return;
+        navUpdateQueued = true;
+        window.requestAnimationFrame(updateNavbar);
+      };
+
+      window.addEventListener("scroll", queueNavbarUpdate, { passive: true });
+      window.addEventListener("resize", queueNavbarUpdate, { passive: true });
+      sectionLinks.forEach(({ link, section }) => {
+        link.addEventListener("click", () => setActiveSection(section.id));
+      });
+      updateNavbar();
     }
 
     // Close the mobile menu once a section link is followed.
