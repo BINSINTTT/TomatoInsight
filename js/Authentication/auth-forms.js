@@ -1126,21 +1126,19 @@
           });
           return;
         }
-        const alreadyRegistered = /already registered|already in use|email-already-in-use/i.test(
-          result.error || ""
-        );
+        const alreadyRegistered =
+          result.code === "auth/email-already-in-use" ||
+          /already registered|already in use|email-already-in-use/i.test(result.error || "");
         if (alreadyRegistered) {
-          writePendingSignup({ status: "awaiting_verification", email, password });
           setSignupLeaveGuard(false);
           setSignupLock(false);
-          openVerifyPanel({
-            email,
-            password,
-            status: "awaiting_verification",
-            message:
-              "This Gmail already has an account waiting for verification. Open the link in your inbox, or resend it below.",
-          });
-          window.TomatoInsightAuth?.resendVerificationEmail?.({ email, password }).catch(() => {});
+          clearPendingVerifySecrets();
+          form.email.setAttribute("aria-invalid", "true");
+          showFormError(
+            errorEl,
+            "This email is already registered. Sign in instead, or use Forgot password if you cannot access it."
+          );
+          form.email.focus();
           return;
         }
         setSignupLeaveGuard(false);

@@ -250,7 +250,11 @@ window.TomatoInsightAuth = {
       return { ok: true };
     } catch (err) {
       console.error("[TomatoInsight] signUp", err);
-      return { ok: false, error: authErrorMessage(err) };
+      return {
+        ok: false,
+        code: err?.code || "",
+        error: authErrorMessage(err),
+      };
     }
   },
 
