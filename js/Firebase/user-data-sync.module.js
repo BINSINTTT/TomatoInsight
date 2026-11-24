@@ -31,6 +31,8 @@ import {
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
+import { deductScanCredit } from "./credits.module.js";
+
 const LOCAL = {
   profiles: "tomatoInsight.userProfiles",
   layout: "tomatoInsight.farmLayout",
@@ -415,9 +417,9 @@ function jsonSize(value) {
   }
 }
 
-function tileForFirestore(info, tileId) {
+function tileForFirestore(info, tileId, guide = readJson(LOCAL.recommendations, {})[String(tileId)]) {
   const safe = firestoreSafe(info) || {};
-  const recommendation = recommendationRecord(readJson(LOCAL.recommendations, {})[String(tileId)]);
+  const recommendation = recommendationRecord(guide);
   if (recommendation) safe.recommendation = recommendationForCloud(recommendation);
   if (jsonSize(safe) <= TILE_DOC_LIMIT) return safe;
   if (safe.weeks && typeof safe.weeks === "object") {
@@ -473,7 +475,7 @@ function namesForLocal(plantNames, tiles, deletions) {
     if (name) out[String(id)] = name;
   });
   Object.entries(tiles || {}).forEach(([id, info]) => {
-    if (gone.has(String(id)) || out[String(id)]) return;
+    if (gone.has(String(id)) || (out[String(id)] && !info?.scanRevision)) return;
     const name = plantNameText(info?.plantName);
     if (name) out[String(id)] = name;
   });
@@ -674,10 +676,9 @@ function mergePlantEntry(entry, previous) {
   return next;
 }
 
-function plantNamesForFirestore(names, tiles) {
+function plantNamesForFirestore(names, tiles, stored = readJson(LOCAL.recommendations, {})) {
   const source = names && typeof names === "object" ? names : {};
   const tileMap = tiles && typeof tiles === "object" ? tiles : {};
-  const stored = readJson(LOCAL.recommendations, {});
   const out = {};
   const ids = new Set([...Object.keys(source), ...Object.keys(tileMap)]);
   ids.forEach((id) => {
@@ -686,6 +687,7 @@ function plantNamesForFirestore(names, tiles) {
     const tile = tileMap[String(id)];
     const diseases = detectedDiseasesForTile(tile);
     const entry = { name, scored: Boolean(tile?.scores) };
+    if (tile?.scanRevision) entry.scanRevision = tile.scanRevision;
     const healthy = healthyRecordForTile(tile);
     if (healthy) entry.healthy = healthy;
     if (diseases.length) {
@@ -739,6 +741,10 @@ function mergeTileRecords(localTiles, remoteTiles, deletions) {
     const left = local[id];
     const right = remote[id];
     if (left && right) {
+      if (right.scanRevision && right.scanRevision !== left.scanRevision) {
+        merged[id] = right;
+        return;
+      }
       merged[id] = tileSavedAtMs(left) >= tileSavedAtMs(right) ? left : right;
       return;
     }
@@ -815,26 +821,27 @@ async function commitOps(ops) {
   }
 }
 
-async function writeTiles(uid, tiles, { pruneMissing = true } = {}) {
-  const tileMap = tiles && typeof tiles === "object" ? tiles : {};
-  const localIds = new Set(Object.keys(tileMap));
-  // Empty local tile map after sign-out must not delete every cloud tile.
-  if (!localIds.size && pruneMissing) return;
-  const existing = pruneMissing ? await getDocs(tilesCol(uid)) : null;
-  const ops = [];
-  if (existing) {
-    existing.forEach((snap) => {
-      if (!localIds.has(snap.id)) {
-        const ref = snap.ref;
-        ops.push((batch) => batch.delete(ref));
+// A browser cache can be older than the farm on another device. Versioned scans
+// are already in Firestore. Migrate only legacy local records during a bulk flush.
+async function writeCachedPlants(uid, farm) {
+  const tiles = farm.tiles || {};
+  const names = plantNamesForFirestore(farm.plantNames, tiles);
+  const user = userRef(uid);
+  for (const id of new Set([...Object.keys(names), ...Object.keys(tiles)])) {
+    const info = tiles[id];
+    if (info?.scanRevision) continue;
+    const ref = doc(tilesCol(uid), id);
+    await runTransaction(fs(), async (tx) => {
+      const snap = await tx.get(ref);
+      if (snap.get("scanRevision")) return;
+      if (info) tx.set(ref, tileForFirestore(info, id));
+      if (names[id]) {
+        const entry = { ...names[id] };
+        delete entry.scored;
+        tx.set(user, { plantNames: { [id]: entry } }, { mergeFields: [`plantNames.${id}`] });
       }
     });
   }
-  Object.entries(tileMap).forEach(([id, info]) => {
-    const ref = doc(tilesCol(uid), id);
-    ops.push((batch) => batch.set(ref, tileForFirestore(info)));
-  });
-  await commitOps(ops);
 }
 
 async function writeDeletions(uid, deletions) {
@@ -898,18 +905,13 @@ async function uploadLocalBundle(uid, email) {
   const userFields = {
     ...profilePayload(profile, email),
     selectedFarmWeek: farm.selectedFarmWeek,
-    plantNames: firestoreSafe(plantNamesForFirestore(farm.plantNames, farm.tiles)) || {},
     scanCalendar: readScanCalendar(),
   };
   if (layout) userFields.layout = layout;
   await writeUserDoc(uid, userFields);
-  await writeTiles(uid, farm.tiles);
+  await writeCachedPlants(uid, farm);
   await writeDeletions(uid, deletions);
-  return {
-    user: userFields,
-    tiles: farm.tiles,
-    deletions,
-  };
+  return readCloudBundle(uid);
 }
 
 /** Create or update the farmer account. Safe on sign-up. */
@@ -943,19 +945,7 @@ async function flushFarmSnapshotToRtdb(uid, snapshot) {
   };
   if (layout) fields.layout = layout;
   await writeUserDoc(id, fields);
-  const tileMap = farm.tiles && typeof farm.tiles === "object" ? farm.tiles : {};
-  if (Object.keys(tileMap).length) {
-    // Use captured plant names during sign-out — localStorage may already be cleared.
-    if (farm.plantNames && typeof farm.plantNames === "object") {
-      const names = firestoreSafe(plantNamesForFirestore(farm.plantNames, tileMap));
-      if (names && Object.keys(names).length) {
-        await writeUserDoc(id, { plantNames: names });
-      }
-    } else {
-      await writePlantNamesFromLocal(id);
-    }
-    await writeTiles(id, tileMap, { pruneMissing: true });
-  }
+  await writeCachedPlants(id, farm);
   if (deletions.length) await writeDeletions(id, deletions);
 }
 
@@ -1073,11 +1063,12 @@ async function writePlantNamesFromLocal(uid) {
     const built = plantNamesForFirestore(localNames, localTiles);
     const gone = deletedTileIdsWithoutScan(localTiles, readLocalDeletions());
     Object.entries(built).forEach(([id, entry]) => {
+      if (merged[id]?.scanRevision && merged[id].scanRevision !== entry.scanRevision) return;
       merged[id] = mergePlantEntry(entry, merged[id]);
     });
     const stored = readJson(LOCAL.recommendations, {});
     Object.keys(merged).forEach((id) => {
-      if (gone.has(String(id))) {
+      if (gone.has(String(id)) && !merged[id]?.scanRevision) {
         delete merged[id];
         return;
       }
@@ -1095,6 +1086,49 @@ export async function syncPlantNamesToRtdb(uid) {
   await writePlantNamesFromLocal(uid);
 }
 
+// Compare the revision the drawer opened with, including old tiles without a revision.
+async function saveScannedPlant(tileNum, info, expectedRevision, needsCredit, uid) {
+  if (!uid || uid !== resolveSyncUid() || !fs()) throw new Error("Sign in to save this plant.");
+  const id = String(tileNum);
+  const ref = doc(tilesCol(uid), id);
+  const user = userRef(uid);
+  const revision = doc(tilesCol(uid)).id;
+  const result = await runTransaction(fs(), async (tx) => {
+    const tile = await tx.get(ref);
+    const account = await tx.get(user);
+    const previous = account.data()?.plantNames?.[id];
+    const current = tile.data();
+    const actual = current?.scanRevision || (tile.exists() || plantNameText(previous) ? "legacy" : "");
+    if (actual !== expectedRevision) {
+      return { conflict: true, record: current, name: current?.plantName || plantNameText(previous),
+        guide: current?.recommendation || previous?.recommendation };
+    }
+    const record = window.TilePlantStorage.withWeekHistory(current, { ...info, scanRevision: revision });
+    const payload = tileForFirestore(record, id, info.intervention);
+    const entry = plantNamesForFirestore({ [id]: info.plantName }, { [id]: payload }, {})[id];
+    delete entry.scored;
+    const balance = needsCredit ? deductScanCredit(tx, account).balance : null;
+    tx.set(ref, payload);
+    tx.set(user, { plantNames: { [id]: entry } }, { mergeFields: [`plantNames.${id}`] });
+    return { record, name: info.plantName, guide: info.intervention, balance };
+  });
+  if (resolveSyncUid() !== uid) return result;
+  // Cache only the transaction outcome. Calling the local setters here would enqueue another write.
+  try {
+    for (const [key, value] of [[LOCAL.tiles, result.record], [LOCAL.plantNames, result.name],
+      [LOCAL.recommendations, result.guide]]) {
+      const all = readJson(key, {});
+      if (value) all[id] = value;
+      else delete all[id];
+      writeJson(key, all);
+    }
+    notifyLocalFarmDataChange("tile-save");
+  } catch (error) {
+    console.warn("[TomatoInsight] Could not cache the saved plant:", error);
+  }
+  return result;
+}
+
 export async function syncTileToRtdb(uid, tileNum, info) {
   if (!fs() || !uid) return;
   const ref = doc(tilesCol(uid), String(tileNum));
@@ -1104,14 +1138,18 @@ export async function syncTileToRtdb(uid, tileNum, info) {
     await updateDoc(userRef(uid), { [`plantNames.${id}`]: deleteField() });
     return;
   }
-  await setDoc(ref, tileForFirestore(info, id));
-  const names = plantNamesForFirestore(readJson(LOCAL.plantNames, {}), readJson(LOCAL.tiles, {}));
-  const entry = names[id];
-  if (entry) {
-    const payload = { ...entry };
-    delete payload.scored;
-    await updateDoc(userRef(uid), { [`plantNames.${id}`]: firestoreSafe(payload) });
-  }
+  const payload = tileForFirestore(info, id);
+  const names = plantNamesForFirestore(readJson(LOCAL.plantNames, {}), { [id]: info });
+  await runTransaction(fs(), async (tx) => {
+    const current = await tx.get(ref);
+    if ((current.get("scanRevision") || "") !== (info.scanRevision || "")) return;
+    tx.set(ref, payload);
+    if (names[id]) {
+      const entry = { ...names[id] };
+      delete entry.scored;
+      tx.set(userRef(uid), { plantNames: { [id]: entry } }, { mergeFields: [`plantNames.${id}`] });
+    }
+  });
 }
 
 export async function syncScanCalendarToCloud(uid) {
@@ -1201,6 +1239,7 @@ function registerGlobalBridge() {
         logCloudFailure("syncLayout", err);
       });
     },
+    saveScannedPlant,
     syncTile(tileNum) {
       const uid = resolveSyncUid();
       if (!uid) return Promise.resolve();

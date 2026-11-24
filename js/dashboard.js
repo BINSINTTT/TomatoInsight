@@ -23,6 +23,8 @@
   let layout = loadLayout();
   let tileDrawerCloseTimer = null;
   let activeTileNum = null;
+  let openedRevision = "";
+  let savingPlant = false;
   let activeTileImageDataUrl = null;
   /** Symptom extent measured by OpenCV (separate from AI confidence). */
   let activeSeverityPct = null;
@@ -367,27 +369,22 @@
     return Object.values(scores).some((pct) => pct > 0);
   }
 
-  function persistTilePlantInfo(tileNum, record) {
-    const ok = window.TilePlantStorage?.set?.(tileNum, record);
-    if (ok) {
-      window.TilePlantNames?.set?.(tileNum, record.plantName);
-      tileNameDrafts.delete(String(tileNum));
-      syncTilePlantName(tileNum, findGridTile(tileNum));
-      const calendar = window.TomatoInsightScanCalendar;
-      const schedule = calendar?.read?.();
-      if (schedule?.enabled) {
-        calendar.noteScanDate(
-          schedule.selected || schedule.anchor || calendar.isoFromDate(new Date())
-        );
-      }
-      tileDrafts.delete(String(tileNum));
-      scanCreditDueTiles.delete(String(tileNum));
-      syncTileGridSummary(tileNum);
-      if (activeTileNum === tileNum) updateTileSaveStatus(record.savedAt, record.weekNumber);
-      window.TomatoInsightNotifications?.syncTiles?.();
-      window.TomatoInsightHomeOverview?.refresh?.();
+  function finishTileSave(tileNum, record) {
+    tileNameDrafts.delete(String(tileNum));
+    syncTilePlantName(tileNum, findGridTile(tileNum));
+    const calendar = window.TomatoInsightScanCalendar;
+    const schedule = calendar?.read?.();
+    if (schedule?.enabled) {
+      calendar.noteScanDate(
+        schedule.selected || schedule.anchor || calendar.isoFromDate(new Date())
+      );
     }
-    return ok;
+    tileDrafts.delete(String(tileNum));
+    scanCreditDueTiles.delete(String(tileNum));
+    syncTileGridSummary(tileNum);
+    if (activeTileNum === tileNum) updateTileSaveStatus(record.savedAt, record.weekNumber);
+    window.TomatoInsightNotifications?.syncTiles?.();
+    window.TomatoInsightHomeOverview?.refresh?.();
   }
 
   const severityRetryTiles = new Set();
@@ -539,6 +536,9 @@
   function openTileDrawer(tileNum, row, col) {
     if (!tileDrawer) return;
     activeTileNum = tileNum;
+    const saved = window.TilePlantStorage?.get?.(tileNum);
+    openedRevision = tileDrafts.get(String(tileNum))?.revision ??
+      (saved?.scanRevision || (saved || window.TilePlantNames?.get?.(tileNum) ? "legacy" : ""));
     loadPlantNameIntoDrawer(tileNum);
     if (tileDrawerPosition) {
       tileDrawerPosition.textContent = `Row ${row + 1} · Column ${col + 1}`;
@@ -660,6 +660,7 @@
     const key = String(tileNum);
     const prev = tileDrafts.get(key) || {};
     const next = {
+      revision: prev.revision ?? openedRevision,
       imageDataUrl:
         patch.imageDataUrl !== undefined ? patch.imageDataUrl : prev.imageDataUrl || null,
       scores: patch.scores !== undefined ? patch.scores : prev.scores || null,
@@ -895,7 +896,7 @@
       (activeTileNum != null && isScanInFlight(activeTileNum)) ||
       zone?.classList.contains("scan-upload--validating");
     const hasImage = zone?.classList.contains("scan-upload--has-image");
-    saveBtn.disabled = Boolean(loading || !hasImage);
+    saveBtn.disabled = Boolean(savingPlant || loading || !hasImage);
   }
 
   function isProbableImage(file) {
@@ -1119,73 +1120,68 @@
       const savedTile = activeTileNum;
       const record = buildPlantInfoRecord();
       const needsCredit = scanNeedsCreditCharge(savedTile);
+      const expected = openedRevision;
+      const userData = window.TomatoInsightUserData;
+      const uid = userData?.getActiveUid();
+      const online = navigator.onLine;
+      savingPlant = true;
       saveBtn.disabled = true;
       saveBtn.textContent = "Saving...";
-
-      let charged = false;
-      let chargeResult = null;
-      if (needsCredit) {
-        if (!window.TomatoInsightCredits?.ensureReadyForScan) {
-          saveBtn.disabled = false;
-          saveBtn.textContent = original;
-          showScanNotice("error", "Credits unavailable", "Scan credits are still loading. Try again in a moment.");
-          return;
-        }
-        const gate = await window.TomatoInsightCredits.ensureReadyForScan();
-        if (!gate.ok) {
-          saveBtn.disabled = false;
-          saveBtn.textContent = original;
-          showCreditBlock(gate);
-          return;
-        }
-        const charge = await window.TomatoInsightCredits.spendForSuccessfulScan();
-        if (!charge?.ok) {
-          saveBtn.disabled = false;
-          saveBtn.textContent = original;
-          showCreditBlock(charge);
-          return;
-        }
-        charged = true;
-        chargeResult = charge;
-      }
-
-      if (window.TomatoInsightRecommendations?.captureForSave) {
+      try {
         try {
-          record.intervention = await window.TomatoInsightRecommendations.captureForSave(
-            savedTile,
-            record.scores,
-            record
+          record.intervention = await window.TomatoInsightRecommendations?.captureForSave?.(
+            savedTile, record.scores, record, !online
           );
-        } catch (err) {
-          console.error("[TomatoInsight] Could not store care recommendation:", err);
+        } catch (error) {
+          console.warn("[TomatoInsight] Could not capture intervention:", error);
         }
-      }
-      const ok = persistTilePlantInfo(savedTile, record);
-      if (!ok && charged) {
-        await window.TomatoInsightCredits?.refundScanCredit?.();
-      }
-      saveBtn.disabled = false;
-      if (ok) {
-        if (charged && chargeResult?.ok) {
-          const cost = window.TomatoInsightCredits?.SCAN_CREDIT_COST ?? 1;
-          const balanceAfter =
-            chargeResult.balance ?? window.TomatoInsightCredits?.getBalance?.() ?? null;
-          window.TomatoInsightCredits?.showCreditDeductionToast?.(cost, balanceAfter);
+        if (online) {
+          if (!uid || !userData?.saveScannedPlant) throw new Error("Your farm is still loading. Try again.");
+          const result = await userData.saveScannedPlant(savedTile, record, expected, needsCredit, uid);
+          if (userData.getActiveUid() !== uid) return;
+          if (result.conflict) {
+            tileDrafts.delete(String(savedTile));
+            tileNameDrafts.delete(String(savedTile));
+            scanCreditDueTiles.delete(String(savedTile));
+            if (activeTileNum === savedTile) {
+              resetScanUploadUI({ cancelRequests: true });
+              openedRevision = result.record?.scanRevision || (result.record || result.name ? "legacy" : "");
+              if (tilePlantNameInput) tilePlantNameInput.value = result.name || "";
+              applyPlantInfoToDrawer(result.record);
+            }
+            showScanNotice("error", "Tile changed", result.record || result.name
+              ? "This tile already has a saved plant." : "The plant on this tile was removed.");
+            return;
+          }
+          if (activeTileNum === savedTile) openedRevision = result.record.scanRevision;
+          if (needsCredit) window.TomatoInsightCredits?.showCreditDeductionToast?.(1, result.balance);
+        } else {
+          if (needsCredit) throw new Error("Connect to the internet to save this scan using a credit.");
+          if (!window.TilePlantStorage?.set?.(savedTile, record)) throw new Error("Could not save this plant.");
+          window.TilePlantNames?.set?.(savedTile, record.plantName);
         }
+        finishTileSave(savedTile, record);
         saveBtn.textContent = "Saved!";
         setTimeout(() => {
           if (saveBtn.textContent === "Saved!") saveBtn.textContent = original;
         }, 1600);
-      } else {
-        saveBtn.textContent = original;
-        if (charged) {
-          showScanNotice("error", "Save failed", "Your credit was returned because the save did not complete.");
-        }
+      } catch (error) {
+        if (error.code === "insufficient-credits") showCreditBlock(error);
+        else showScanNotice("error", "Save failed", error.message || "Try saving the plant again.");
+      } finally {
+        savingPlant = false;
+        if (saveBtn.textContent === "Saving...") saveBtn.textContent = original;
+        syncSaveInfoButton();
       }
     });
   }
 
   window.TomatoInsightScan = {
+    isDisplayingSavedPlant(tileId) {
+      const saved = window.TilePlantStorage?.get?.(tileId);
+      return saved && String(activeTileNum) === tileId && !tileDrafts.has(tileId) &&
+        activeTileImageDataUrl === saved.imageDataUrl && openedRevision === (saved.scanRevision || "legacy");
+    },
     setClassificationScores(scores, severityMeta) {
       setClassificationScores(scores, "scan", severityMeta);
     },

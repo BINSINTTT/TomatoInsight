@@ -586,6 +586,28 @@ export async function ensureReadyForScan() {
   }
 }
 
+export function deductScanCredit(tx, snap) {
+  const node = normalizeNode(snap.data()?.credits);
+  if (!node.signupGranted || node.balance < SCAN_CREDIT_COST) {
+    const err = new Error("insufficient-credits");
+    err.code = "insufficient-credits";
+    throw err;
+  }
+  const storedAfterSpend = {
+    ...node,
+    balance: node.balance - SCAN_CREDIT_COST,
+    updatedAt: new Date().toISOString(),
+  };
+  tx.set(
+    snap.ref,
+    {
+      credits: storedAfterSpend,
+    },
+    { merge: true }
+  );
+  return storedAfterSpend;
+}
+
 export async function spendForSuccessfulScan() {
   const uid = currentUid();
   if (!uid) return { ok: false, code: "signed-out", error: "Sign in to use scan credits." };
@@ -610,24 +632,7 @@ export async function spendForSuccessfulScan() {
   try {
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(userRef);
-      const node = normalizeNode(snap.data()?.credits);
-      if (!node.signupGranted || node.balance < SCAN_CREDIT_COST) {
-        const err = new Error("insufficient-credits");
-        err.code = "insufficient-credits";
-        throw err;
-      }
-      storedAfterSpend = {
-        ...node,
-        balance: node.balance - SCAN_CREDIT_COST,
-        updatedAt: new Date().toISOString(),
-      };
-      tx.set(
-        userRef,
-        {
-          credits: storedAfterSpend,
-        },
-        { merge: true }
-      );
+      storedAfterSpend = deductScanCredit(tx, snap);
     });
   } catch (err) {
     const message = String(err?.code || err?.message || "");

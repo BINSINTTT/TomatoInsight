@@ -232,6 +232,7 @@
 
   window.TilePlantStorage = {
     get,
+    withWeekHistory,
     set,
     remove,
     loadAll,

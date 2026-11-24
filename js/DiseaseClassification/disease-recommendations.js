@@ -802,7 +802,7 @@
   function rememberGuide(tileId, guides, scoreKey, recKey) {
     const id = tileKey(tileId);
     const record = guideRecord(guides, scoreKey, recKey);
-    if (!id || !record) return;
+    if (!id || !record || !window.TomatoInsightScan?.isDisplayingSavedPlant(id)) return;
     const store = readRecommendationStore();
     if (JSON.stringify(store[id]) === JSON.stringify(record)) return;
     store[id] = record;
@@ -819,7 +819,7 @@
     localStorage.setItem(REC_KEY, JSON.stringify(store));
   }
 
-  async function captureForSave(tileNum, scores, severityInput) {
+  async function captureForSave(tileNum, scores, severityInput, persist = true) {
     const id = tileKey(tileNum);
     if (!id || !scores) return null;
     const top = findTopDisease(scores);
@@ -834,20 +834,15 @@
     let topGuide = null;
     const client = window.TomatoInsightGroqClient;
     if (client?.groqEnabled?.() && client.fetchCareRecommendation) {
-      const result = await client.fetchCareRecommendation(scores, {
-        affectedAreaPct: resolved?.affectedAreaPct,
-        severityPct: resolved?.severityPct,
-        severityLabel: resolved?.severityLabel,
-      });
-      const groqOnly = Boolean(client.groqOnlyMode?.());
-      if (result?.ok && result.guide && (!groqOnly || result.groqUsed)) topGuide = result.guide;
-      else if (groqOnly) return null;
+      const result = await requestGroqGuide(client, scores, recKey, resolved);
+      if (result && !result.error) topGuide = result;
+      else if (client.groqOnlyMode?.()) return null;
     }
     let guides = mergeGuidesWithTopOverride(scores, topGuide, resolved);
     if (!guides.length && builtInRulesEnabled()) guides = guidesForScores(scores, resolved);
     if (!guides.length) return null;
     const record = guideRecord(guides, scoreKey, recKey);
-    if (!record) return null;
+    if (!record || !persist) return record;
     const store = readRecommendationStore();
     store[id] = record;
     localStorage.setItem(REC_KEY, JSON.stringify(store));
