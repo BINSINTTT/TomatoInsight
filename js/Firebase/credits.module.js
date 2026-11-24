@@ -32,6 +32,8 @@ const PROFILE_BONUS_NOTICE_KEY = "tomatoInsight.profileBonusNotice";
 const SIGNUP_TOAST_SHOWN_PREFIX = "tomatoInsight.creditToast.signup10.";
 const PROFILE_TOAST_SHOWN_PREFIX = "tomatoInsight.creditToast.profile5.";
 const creditToastHandled = new Set();
+let dashboardReady = false;
+let confirmedCreditsUid = null;
 
 let cachedUid = null;
 let cachedBalance = null;
@@ -207,12 +209,17 @@ export function takeProfileBonusNotice() {
 }
 
 function publish(uid, record, extra = {}) {
+  if (!extra.fromCache) confirmedCreditsUid = uid;
   cachedUid = uid;
   cachedBalance = Number(record.balance) || 0;
   cachedProfileBonusGranted = Boolean(record.profileBonusGranted);
   creditsLoaded = true;
   writeCache(uid, record);
+  if (extra.signupCreditsJustGranted && !creditToastWasShown(SIGNUP_TOAST_SHOWN_PREFIX, uid)) {
+    localStorage.setItem(toastStorageKey(SIGNUP_TOAST_SHOWN_PREFIX, uid), "pending");
+  }
   paintCredits();
+  showDashboardCreditNotices();
   const profileBonusJustGranted = Boolean(extra.profileBonusJustGranted);
   window.dispatchEvent(
     new CustomEvent("tomatoInsight:creditsChanged", {
@@ -394,48 +401,39 @@ function rememberCreditToastShown(prefix, uid) {
   }
 }
 
-function maybeShowCreditWelcomeToasts(uid, result) {
-  if (!uid || !result) return;
-
-  let signupQueued = false;
-  if (result.signupCreditsJustGranted && !creditToastWasShown(SIGNUP_TOAST_SHOWN_PREFIX, uid)) {
+function showDashboardCreditNotices() {
+  if (!dashboardReady || document.hidden || !creditsAreReady()) return;
+  const user = getApps().length ? getAuth(getApps()[0]).currentUser : null;
+  if (!user?.emailVerified || user.uid !== cachedUid || user.uid !== confirmedCreditsUid) return;
+  const uid = user.uid;
+  if (localStorage.getItem(toastStorageKey(SIGNUP_TOAST_SHOWN_PREFIX, uid)) === "pending") {
+    mountCreditToast({
+      variant: "success",
+      title: "Welcome credits added",
+      text: "You received 10 free scan credits to start scanning your farm.",
+      icon: "check",
+      autoHideMs: 9000,
+    });
     rememberCreditToastShown(SIGNUP_TOAST_SHOWN_PREFIX, uid);
-    signupQueued = true;
-    window.setTimeout(
-      () =>
-        mountCreditToast({
-          variant: "success",
-          title: "Welcome credits added",
-          text: "You received 10 free scan credits to start scanning your farm.",
-          icon: "check",
-          autoHideMs: 9000,
-        }),
-      120
-    );
   }
 
   const localProfile = readLocalProfile(uid) || {};
   if (
-    result.profileBonusGranted ||
+    cachedProfileBonusGranted ||
     isFarmSetupComplete(localProfile) ||
     creditToastWasShown(PROFILE_TOAST_SHOWN_PREFIX, uid)
   ) {
     return;
   }
 
+  mountCreditToast({
+    variant: "accent",
+    title: "Earn 5 more credits",
+    text: "Finish all six farm setup steps, then click Update profile to add 5 extra scan credits.",
+    icon: "check",
+    autoHideMs: 9000,
+  });
   rememberCreditToastShown(PROFILE_TOAST_SHOWN_PREFIX, uid);
-  const delay = signupQueued ? 520 : 180;
-  window.setTimeout(
-    () =>
-      mountCreditToast({
-        variant: "accent",
-        title: "Earn 5 more credits",
-        text: "Finish all six farm setup steps, then click Update profile to add 5 extra scan credits.",
-        icon: "check",
-        autoHideMs: 9000,
-      }),
-    delay
-  );
 }
 
 function paintCredits() {
@@ -473,6 +471,7 @@ export function stopWatchingCredits() {
   if (stopCreditsWatch) stopCreditsWatch();
   stopCreditsWatch = null;
   cachedUid = null;
+  confirmedCreditsUid = null;
   cachedBalance = null;
   cachedProfileBonusGranted = false;
   creditsLoaded = false;
@@ -506,12 +505,6 @@ export async function ensureAccountCredits(uid, profile, options = {}) {
 
   if (initialSnap.exists() && sameCreditNode(previous, next.node)) {
     publish(uid, previous);
-    maybeShowCreditWelcomeToasts(uid, {
-      balance: previous.balance,
-      profileBonusGranted: previous.profileBonusGranted,
-      profileBonusJustGranted: false,
-      signupCreditsJustGranted: false,
-    });
     watchCredits(uid);
     return {
       balance: previous.balance,
@@ -551,12 +544,6 @@ export async function ensureAccountCredits(uid, profile, options = {}) {
   const profileBonusJustGranted = grantedProfileBonusInTx;
   const signupCreditsJustGranted = !hadSignupGranted && stored.signupGranted;
   publish(uid, stored, { profileBonusJustGranted, signupCreditsJustGranted });
-  maybeShowCreditWelcomeToasts(uid, {
-    balance: stored.balance,
-    profileBonusGranted: stored.profileBonusGranted,
-    profileBonusJustGranted,
-    signupCreditsJustGranted,
-  });
   watchCredits(uid);
   return {
     balance: stored.balance,
@@ -911,6 +898,10 @@ export function hideOutOfCreditModal() {
 }
 
 window.TomatoInsightCredits = {
+  onDashboardReady() {
+    dashboardReady = true;
+    showDashboardCreditNotices();
+  },
   SIGNUP_CREDITS,
   PROFILE_BONUS_CREDITS,
   SCAN_CREDIT_COST,
@@ -947,6 +938,11 @@ window.TomatoInsightCredits = {
 bindCreditsToAuth();
 restoreCachedBalance();
 bindCreditTopUpButtons();
+window.addEventListener("tomatoInsight:accountName", showDashboardCreditNotices);
+document.addEventListener("visibilitychange", showDashboardCreditNotices);
+window.addEventListener("storage", (event) => {
+  if (event.key === toastStorageKey(SIGNUP_TOAST_SHOWN_PREFIX, cachedUid)) showDashboardCreditNotices();
+});
 window.addEventListener("tomatoInsight:userDataReady", () => {
   const uid = currentUid();
   if (!uid) {

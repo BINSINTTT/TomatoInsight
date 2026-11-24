@@ -1607,6 +1607,7 @@
       : Promise.resolve();
     run.then(() => {
       reloadFarmFromStorage();
+      requestAnimationFrame(() => window.TomatoInsightCredits?.onDashboardReady());
     });
   }
 
